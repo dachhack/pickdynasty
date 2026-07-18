@@ -1,65 +1,79 @@
 # Deploying Epic Pick'em
 
-## Why not GitHub Pages?
+Epic Pick'em shares one provider stack with **Drip League FF** (`dachhack/ffgame`)
+so the same accounts, database provider, hosting, and ops patterns serve both
+products:
 
-GitHub Pages only serves **static files**. Epic Pick'em is a server-rendered
-Next.js app — auth sessions, a database, server actions, and API/cron routes —
-so it needs a Node.js host. The equivalent (and free) QA story is **Vercel
-preview deployments**: every push to a branch gets its own live URL
-automatically, which is strictly better than a single Pages QA site.
+| Function | Provider | Notes |
+| --- | --- | --- |
+| Database | **Supabase Postgres** | Same project as Drip → same `auth.users`; Epic's tables live in the `public` schema alongside its own (or use a dedicated schema if preferred) |
+| Auth | **Supabase Auth** | Shared accounts across Drip + Epic. Local JWT driver kicks in automatically when Supabase env vars are absent (dev/CI) |
+| App hosting | **Fly.io** | `fly.toml` + `Dockerfile` in this repo, same pattern as Drip's pilot worker |
+| Static hosting | GitHub Pages | Drip's site only — Epic is server-rendered and lives on Fly |
+| Scheduled jobs | **GitHub Actions** | `.github/workflows/sync-results.yml` hits `/api/cron/sync` every 15 min |
+| CI | GitHub Actions | `ci.yml`: lint + build against a Postgres service container |
+| Analytics | PostHog | (not yet wired into Epic — add `posthog-js` with the same org as Drip) |
 
-## Recommended setup: Vercel + Neon Postgres
+## First deploy
 
+1. **Supabase**: use the existing Drip project (shared accounts) — or a fresh
+   project if you'd rather keep the products isolated. From Project Settings →
+   Database, copy both connection strings:
+   - pooled (port 6543) → `DATABASE_URL` (append `?pgbouncer=true`)
+   - direct (port 5432) → `DIRECT_URL`
+
+   From Project Settings → API, copy the URL and anon key for
+   `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+2. **Fly**:
+   ```bash
+   fly apps create epicpickem
+   fly secrets set DATABASE_URL='...' DIRECT_URL='...' \
+     SESSION_SECRET=$(openssl rand -hex 32) CRON_SECRET=$(openssl rand -hex 32)
+   fly deploy \
+     --build-arg NEXT_PUBLIC_SUPABASE_URL='https://<ref>.supabase.co' \
+     --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY='<anon key>'
+   ```
+   The image runs `prisma migrate deploy` on boot, so schema changes apply on
+   every deploy.
+
+3. **Domain**: `fly certs add epicpickem.com` (and `www.epicpickem.com`), then
+   set the A/AAAA/CNAME records Fly prints at your registrar.
+
+4. **GitHub repo settings**:
+   - Secret `CRON_SECRET` — same value as the Fly secret
+   - Variable `APP_URL` — `https://epicpickem.com` (defaults to that if unset)
+
+## QA / staging
+
+Mirror Drip's staging pattern (`ffgame-staging`): a second Fly app
+(`epicpickem-staging`) deployed from a staging branch, pointed at a separate
+Supabase project (or schema) so test leagues never touch prod data.
+
+```bash
+fly apps create epicpickem-staging
+fly deploy --config fly.toml --app epicpickem-staging ...
 ```
-GitHub repo
- ├─ push to any branch  ──▶  Vercel Preview  (QA URL per push)  ─▶ Neon branch DB
- └─ merge to main       ──▶  Vercel Production (epicpickem.com) ─▶ Neon main DB
+
+CI (`ci.yml`) gates every push/PR with lint + build against a disposable
+Postgres, so broken schema or type errors never reach a deploy.
+
+## Local development
+
+Auth falls back to the built-in JWT driver when Supabase env vars are unset —
+no Supabase account needed to hack on the app. You do need a Postgres URL
+(any of: Supabase free project, `supabase start` locally, or plain Postgres):
+
+```bash
+cp .env.example .env    # fill in DATABASE_URL + DIRECT_URL
+npx prisma migrate deploy
+npm run dev
 ```
-
-### One-time steps
-
-1. **Vercel**: import the GitHub repo (framework auto-detected). Every branch
-   push now gets a preview URL; `main` deploys to production.
-2. **Neon** (or Vercel Postgres): create a project. Copy the pooled connection
-   string. Neon's *database branching* pairs perfectly with previews — QA
-   deploys can point at a branch of the prod database with realistic data.
-3. **Switch Prisma to Postgres**: in `prisma/schema.prisma` change
-   `provider = "sqlite"` → `provider = "postgresql"`, delete
-   `prisma/migrations` (they're SQLite-flavored), and run
-   `npx prisma migrate dev --name init` once against a Postgres URL to create
-   a fresh Postgres baseline. Commit the new migrations.
-4. **Vercel env vars** (Production + Preview scopes separately):
-   - `DATABASE_URL` — prod DB for Production, QA/branch DB for Preview
-   - `SESSION_SECRET` — `openssl rand -hex 32`, different per environment
-   - `CRON_SECRET` — protects `/api/cron/sync`; Vercel Cron sends it
-     automatically as a Bearer token when set
-5. **Build command**: `npx prisma migrate deploy && next build` so schema
-   changes apply on every deploy.
-6. **Domain**: add `epicpickem.com` (and `www`) in Vercel → Domains, set the
-   DNS records it prints at your registrar. Optionally add `qa.epicpickem.com`
-   as a fixed alias for a QA branch.
-
-### What's already in the repo
-
-- `.github/workflows/ci.yml` — lint + build gate on every push/PR (this is
-  the "QA" gate that runs in GitHub itself)
-- `vercel.json` — cron schedule hitting `/api/cron/sync` every 15 minutes so
-  game results and standings update without anyone pressing "Sync"
-  (hobby-plan crons are limited to daily; paid plans honor the 15-min schedule)
-- `/api/cron/sync` — the endpoint itself, `CRON_SECRET`-guarded
 
 ## Data plumbing summary
 
-| Piece | Dev (today) | Production |
-| --- | --- | --- |
-| Database | SQLite file (`prisma/dev.db`) | Postgres (Neon/Vercel) |
-| Schema management | `prisma migrate dev` | `prisma migrate deploy` on build |
-| Sessions | JWT cookie, `SESSION_SECRET` from `.env` | same, secret from Vercel env |
-| Sports data | ESPN public API (no key) | same — no credentials needed |
-| Fantasy data | Sleeper public API / ESPN fantasy | same; private ESPN leagues store espn_s2/SWID per league |
-| Result updates | manual "Sync results" button | Vercel Cron → `/api/cron/sync` |
-| File storage | none needed | none needed |
-
-No payment processing, no email service, and no API keys are required for the
-current feature set. First future needs: an email provider (Resend/Postmark)
-for pick reminders, and OAuth apps if Yahoo Fantasy or social login are added.
+- **Sports + fantasy data**: ESPN and Sleeper public APIs — no keys, no cost.
+- **Result updates**: GitHub Actions → `/api/cron/sync` (CRON_SECRET-guarded).
+- **No payment processing** (money is tracked, never moved), no email service
+  yet, no file storage. First future needs: an email provider for pick
+  reminders; Yahoo OAuth if Yahoo fantasy import is added.

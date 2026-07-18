@@ -1,0 +1,21 @@
+# Fly config for Epic Pick'em (epicpickem.com). Deploy from the repo root:
+#   fly deploy
+# Secrets first (see DEPLOYMENT.md):
+#   fly secrets set DATABASE_URL=... DIRECT_URL=... SESSION_SECRET=... CRON_SECRET=...
+# QA mirrors Drip's staging pattern: a second app (epicpickem-staging) deployed
+# from the staging branch, pointed at a separate Supabase project/schema.
+app = "epicpickem"
+primary_region = "iad"
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

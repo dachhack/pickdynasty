@@ -1,19 +1,25 @@
 // Epic Pick'em (epicpickem.com) data model.
-// SQLite for local dev; switch provider to "postgresql" for production.
+// Postgres (Supabase) — shared provider stack with Drip League FF.
+// DATABASE_URL: pooled connection (port 6543, ?pgbouncer=true)
+// DIRECT_URL:   direct connection (port 5432) used by migrations
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
+  // With Supabase Auth this is the auth.users UUID (shared account across
+  // Drip + Epic); with the local dev auth driver it's a generated cuid.
   id           String       @id @default(cuid())
   email        String       @unique
-  passwordHash String
+  // Only set by the local dev auth driver; Supabase Auth users have none.
+  passwordHash String?
   name         String
   createdAt    DateTime     @default(now())
   memberships  Membership[]

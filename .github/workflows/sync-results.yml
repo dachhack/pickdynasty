@@ -1,0 +1,20 @@
+# Scheduled result sync — replaces Vercel cron in the consolidated
+# Supabase + Fly + GitHub Actions stack (same ops pattern as Drip's
+# sync/simulate workflows). Hits the CRON_SECRET-guarded endpoint so game
+# results and standings update without anyone pressing "Sync".
+name: Sync results
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 min (GitHub may delay a few minutes)
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call sync endpoint
+        run: |
+          curl -fsS --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_URL || 'https://epicpickem.com' }}/api/cron/sync"

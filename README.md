@@ -30,18 +30,22 @@ NHL, tennis, MLS, and anything else you can score.
 
 ## Stack
 
+Shares one provider stack with [Drip League FF](https://github.com/dachhack/ffgame)
+(see `DEPLOYMENT.md`): **Supabase** (Postgres + Auth, shared accounts across both
+products), **Fly.io** hosting, **GitHub Actions** for CI and scheduled result sync.
+
 - [Next.js 16](https://nextjs.org) (App Router, React Server Components, Server Actions)
 - TypeScript + Tailwind CSS 4
-- [Prisma 6](https://prisma.io) ORM — SQLite in development, switch the datasource
-  provider to `postgresql` for production
-- Cookie-based sessions (JWT via `jose`), passwords hashed with bcrypt
+- [Prisma 6](https://prisma.io) ORM on Postgres
+- Auth: Supabase Auth in production; a self-contained JWT driver takes over
+  automatically in dev/CI when Supabase env vars are absent
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env       # then set a real SESSION_SECRET
-npx prisma migrate dev     # creates prisma/dev.db
+cp .env.example .env       # point DATABASE_URL/DIRECT_URL at any Postgres
+npx prisma migrate deploy
 npm run dev                # http://localhost:3000
 ```
 

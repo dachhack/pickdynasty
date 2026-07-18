@@ -48,6 +48,7 @@ export default function AuthForm({
             />
           </div>
           {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
+          {state?.info && <p className="text-sm text-emerald-400">{state.info}</p>}
           <button className="btn" disabled={pending}>
             {pending ? "One sec…" : mode === "login" ? "Log in" : "Sign up"}
           </button>
