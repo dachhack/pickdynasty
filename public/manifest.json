@@ -1,6 +1,6 @@
 {
-  "name": "PickDynasty",
-  "short_name": "PickDynasty",
+  "name": "Epic Pick'em",
+  "short_name": "EpicPickem",
   "description": "Pick'em leagues with friends, for every sport.",
   "start_url": "/dashboard",
   "display": "standalone",

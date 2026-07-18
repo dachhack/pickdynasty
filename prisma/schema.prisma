@@ -1,4 +1,4 @@
-// PickDynasty data model.
+// Epic Pick'em (epicpickem.com) data model.
 // SQLite for local dev; switch provider to "postgresql" for production.
 
 generator client {

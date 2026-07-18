@@ -5,11 +5,12 @@ import { getCurrentUser } from "@/lib/auth";
 import { logout } from "@/actions/auth";
 
 export const metadata: Metadata = {
-  title: "PickDynasty — Pick'em Leagues With Friends",
+  title: "Epic Pick'em — Pick'em Leagues With Friends",
   description:
     "Set up, track, and compete in pick'em leagues for any sport — NFL, college football, March Madness, MLB, NHL, tennis, and more.",
+  metadataBase: new URL("https://epicpickem.com"),
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, title: "PickDynasty", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Epic Pick'em", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
@@ -26,7 +27,7 @@ export default async function RootLayout({
         <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
             <Link href={user ? "/dashboard" : "/"} className="text-lg font-black tracking-tight">
-              🏟️ Pick<span className="text-indigo-400">Dynasty</span>
+              ⚡ Epic<span className="text-indigo-400">Pick&rsquo;em</span>
             </Link>
             <nav className="flex items-center gap-3 text-sm">
               {user ? (
@@ -54,7 +55,7 @@ export default async function RootLayout({
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
         <footer className="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-          PickDynasty — bragging rights, tracked properly.
+          Epic Pick&rsquo;em · epicpickem.com — bragging rights, tracked properly.
         </footer>
       </body>
     </html>

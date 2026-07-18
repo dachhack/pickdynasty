@@ -3,7 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cache } from "react";
 import { db } from "./db";
 
-const SESSION_COOKIE = "pd_session";
+const SESSION_COOKIE = "ep_session";
 const secret = () =>
   new TextEncoder().encode(process.env.SESSION_SECRET ?? "dev-secret");
 

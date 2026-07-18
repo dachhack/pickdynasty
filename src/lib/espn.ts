@@ -3,7 +3,7 @@
 
 type EspnPathConfig = { path: string; groups?: string };
 
-// Maps PickDynasty sport ids -> ESPN API paths.
+// Maps Epic Pick'em sport ids -> ESPN API paths.
 // groups: 80 = all FBS college football, 50 = all D1 men's basketball
 // (without it ESPN only returns Top 25 games).
 const ESPN_PATHS: Record<string, EspnPathConfig> = {

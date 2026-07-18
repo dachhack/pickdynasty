@@ -43,7 +43,7 @@ export default async function MoneyPage({
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm text-slate-500">
-        💡 PickDynasty tracks money — it never moves it. Settle up in cash, Venmo, or however your
+        💡 Epic Pick&rsquo;em tracks money — it never moves it. Settle up in cash, Venmo, or however your
         group does it, then mark entries as settled here.
       </p>
 

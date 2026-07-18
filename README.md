@@ -1,4 +1,4 @@
-# 🏟️ PickDynasty
+# ⚡ Epic Pick'em
 
 Pick'em leagues with friends, for **every** sport — NFL, college football, NBA, college
 basketball, March Madness, MLB, the College World Series, the Little League World Series,
@@ -16,7 +16,7 @@ NHL, tennis, MLS, and anything else you can score.
 - **Standings** — 1 point per correct pick, live leaderboard with win %.
 - **Team branding** — every player names their team and picks a color + emoji.
 - **Money tracker** — buy-ins, side pots, payouts, and adjustments in a ledger with
-  settled/unsettled status. *PickDynasty tracks money; it never moves it.* No payment
+  settled/unsettled status. *Epic Pick'em tracks money; it never moves it.* No payment
   processing — settle up in cash or Venmo and mark it settled.
 - **Admin area** — member management (promote/demote commissioners, remove players),
   league settings, invite management.
