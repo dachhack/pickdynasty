@@ -81,10 +81,10 @@ src/app/                  # routes
 
 ## Roadmap
 
-- Automatic schedules & scores via a sports data API (ESPN public endpoints or
-  SportsDataIO) instead of manual game entry
-- More pool formats: confidence points, survivor, spread (ATS), brackets for
-  March Madness
-- Email/push reminders before pick deadlines
+- Email (Resend/Postmark) for pick-deadline reminders, invites, and recaps
+- Supabase Realtime upgrade for chat and live standings
+- March Madness bracket format
+- Yahoo Fantasy import (OAuth)
+- Share cards (image export of picks/standings for the group chat)
+- Trophy case badges; head-to-head compare view
 - Native mobile app with Expo (React Native) sharing this backend
-- Postgres + hosted deploy (Vercel/Fly), OAuth sign-in
