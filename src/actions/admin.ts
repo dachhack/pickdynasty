@@ -64,6 +64,22 @@ export async function toggleRole(formData: FormData) {
   revalidatePath(`/leagues/${leagueId}/admin`);
 }
 
+/** Drag-to-reorder slates from the admin order strip. */
+export async function reorderSlates(input: {
+  leagueId: string;
+  orderedSlateIds: string[];
+}): Promise<void> {
+  await requireCommissioner(input.leagueId);
+  const slates = await db.slate.findMany({ where: { leagueId: input.leagueId } });
+  const valid = new Set(slates.map((s) => s.id));
+  let order = 0;
+  for (const id of input.orderedSlateIds) {
+    if (!valid.has(id)) continue;
+    await db.slate.update({ where: { id }, data: { order: order++ } });
+  }
+  revalidatePath(`/leagues/${input.leagueId}`, "layout");
+}
+
 export async function createSlate(formData: FormData) {
   const leagueId = String(formData.get("leagueId") ?? "");
   await requireCommissioner(leagueId);

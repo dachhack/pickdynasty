@@ -9,6 +9,7 @@ import {
   setResult,
 } from "@/actions/admin";
 import { syncEspnResults } from "@/actions/espn";
+import SlateOrderStrip from "@/components/boards/SlateOrderStrip";
 
 const fmt = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -81,6 +82,11 @@ export default async function AdminSlatesPage({
           import a week of games in a couple of taps.
         </p>
       )}
+
+      <SlateOrderStrip
+        leagueId={id}
+        slates={slates.map((s) => ({ id: s.id, name: s.name }))}
+      />
 
       {slates.map((slate) => {
         // Blind-pick-safe nudge data: WHO has picked, never WHAT they picked.
