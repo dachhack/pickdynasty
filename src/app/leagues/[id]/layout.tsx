@@ -18,6 +18,7 @@ export default async function LeagueLayout({
   const tabs = [
     { href: `/leagues/${id}`, label: "Standings" },
     { href: `/leagues/${id}/picks`, label: "Picks" },
+    { href: `/leagues/${id}/chat`, label: "Chat" },
     { href: `/leagues/${id}/money`, label: "Money" },
     { href: `/leagues/${id}/team`, label: "My Team" },
     ...(isAdmin ? [{ href: `/leagues/${id}/admin`, label: "Admin" }] : []),

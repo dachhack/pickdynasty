@@ -29,6 +29,9 @@ NHL, tennis, MLS, and anything else you can score.
   head-to-head matchups as pick'em games: members pick which fantasy teams win. Public
   ESPN leagues work with just the league ID; private ones need the espn_s2/SWID cookies.
   Results sync automatically once a week is final.
+- **League chat** — trash talk with team-branded messages, one-tap emoji reactions, and
+  GIF search (add a free Tenor API key via TENOR_API_KEY to enable the picker). Polling
+  MVP today; swaps to Supabase Realtime when the production project is connected.
 - **Admin area** — member management (promote/demote commissioners, remove players),
   league settings, invite management.
 - **Installable on mobile** — the site is a PWA (`manifest.json`); "Add to Home Screen"

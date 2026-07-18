@@ -47,6 +47,7 @@ model League {
   slates      Slate[]
   moneyEntries MoneyEntry[]
   fantasyLink FantasyLink?
+  messages    Message[]
 }
 
 // Connects a pick'em league to a Sleeper or ESPN fantasy league so
@@ -79,6 +80,8 @@ model Membership {
   moneyEntries MoneyEntry[]
   tiebreakers TiebreakerGuess[]
   reactions Reaction[]
+  messages  Message[]
+  messageReactions MessageReaction[]
 
   @@unique([userId, leagueId])
 }
@@ -133,6 +136,33 @@ model Pick {
   membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
 
   @@unique([gameId, membershipId])
+}
+
+// League chat: text and/or a GIF per message. Polling MVP — swap the feed
+// for Supabase Realtime when the production project is wired up.
+model Message {
+  id           String            @id @default(cuid())
+  leagueId     String
+  membershipId String? // kept nullable so messages survive member removal
+  body         String            @default("")
+  gifUrl       String?
+  createdAt    DateTime          @default(now())
+  league       League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  membership   Membership?       @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  reactions    MessageReaction[]
+
+  @@index([leagueId, createdAt])
+}
+
+model MessageReaction {
+  id           String     @id @default(cuid())
+  messageId    String
+  membershipId String
+  emoji        String
+  message      Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, membershipId, emoji])
 }
 
 // One-tap emoji reactions on a slate's recap (🔥😂💀🎯). Toggled on/off.
