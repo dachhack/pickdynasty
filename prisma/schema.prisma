@@ -1,0 +1,112 @@
+// PickDynasty data model.
+// SQLite for local dev; switch provider to "postgresql" for production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
+  leagues      League[]     @relation("LeagueCreator")
+}
+
+model League {
+  id          String       @id @default(cuid())
+  name        String
+  sport       String // one of SPORTS in src/lib/sports.ts
+  season      String // e.g. "2026"
+  inviteCode  String       @unique
+  // Blind picks: other players' picks stay hidden until each game locks.
+  blindPicks  Boolean      @default(true)
+  // Commissioner may view hidden picks (for dispute resolution).
+  adminCanSeePicks Boolean @default(false)
+  buyIn       Float        @default(0)
+  currency    String       @default("USD")
+  createdById String
+  createdBy   User         @relation("LeagueCreator", fields: [createdById], references: [id])
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  slates      Slate[]
+  moneyEntries MoneyEntry[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  leagueId  String
+  role      String   @default("PLAYER") // COMMISSIONER | PLAYER
+  teamName  String
+  teamColor String   @default("#4f46e5")
+  teamEmoji String   @default("🏆")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  picks     Pick[]
+  moneyEntries MoneyEntry[]
+
+  @@unique([userId, leagueId])
+}
+
+// A slate is a round of games players pick against: an NFL week,
+// a day of March Madness, a tennis round, etc.
+model Slate {
+  id           String    @id @default(cuid())
+  leagueId     String
+  name         String // "Week 1", "Sweet 16", "Wimbledon QF"
+  order        Int       @default(0)
+  // Optional slate-wide deadline; games also lock individually at start time.
+  pickDeadline DateTime?
+  league       League    @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  games        Game[]
+  createdAt    DateTime  @default(now())
+}
+
+model Game {
+  id        String    @id @default(cuid())
+  slateId   String
+  homeTeam  String
+  awayTeam  String
+  startTime DateTime
+  // null = not decided; HOME | AWAY | TIE
+  winner    String?
+  slate     Slate     @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  picks     Pick[]
+  createdAt DateTime  @default(now())
+}
+
+model Pick {
+  id           String     @id @default(cuid())
+  gameId       String
+  membershipId String
+  choice       String // HOME | AWAY
+  updatedAt    DateTime   @updatedAt
+  game         Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, membershipId])
+}
+
+// Money tracker only — no payment processing. Positive amounts are money
+// into the pot (buy-ins); negative are money out (payouts).
+model MoneyEntry {
+  id           String      @id @default(cuid())
+  leagueId     String
+  membershipId String?
+  type         String // BUY_IN | PAYOUT | ADJUSTMENT
+  amount       Float
+  note         String      @default("")
+  settled      Boolean     @default(false) // has the cash actually changed hands?
+  createdAt    DateTime    @default(now())
+  league       League      @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  membership   Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+}
