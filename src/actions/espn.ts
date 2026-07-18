@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireCommissioner } from "@/lib/league";
 import { fetchScoreboard, toEspnDate } from "@/lib/espn";
+import { fetchFantasyMatchups, parseFantasyExternalId } from "@/lib/fantasy";
 
 /** Imports the games the commissioner checked on the import page. */
 export async function importEspnGames(formData: FormData) {
@@ -42,7 +43,11 @@ export async function importEspnGames(formData: FormData) {
   redirect(`/leagues/${leagueId}/admin/slates`);
 }
 
-/** Pulls final scores from ESPN for every imported, undecided, started game. */
+/**
+ * Pulls results for every imported, undecided, started game — real-sport
+ * scores from the ESPN scoreboard and fantasy matchup outcomes from the
+ * linked Sleeper/ESPN fantasy league.
+ */
 export async function syncEspnResults(formData: FormData) {
   const leagueId = String(formData.get("leagueId") ?? "");
   const me = await requireCommissioner(leagueId);
@@ -56,11 +61,38 @@ export async function syncEspnResults(formData: FormData) {
     },
   });
 
-  const dates = [...new Set(pending.map((g) => toEspnDate(g.startTime)))];
+  const scoreboardGames = pending.filter(
+    (g) => parseFantasyExternalId(g.externalId!).kind === "scoreboard"
+  );
+  const fantasyGames = pending.filter(
+    (g) => parseFantasyExternalId(g.externalId!).kind === "fantasy"
+  );
+
   const results = new Map<string, "HOME" | "AWAY" | "TIE">();
+
+  const dates = [...new Set(scoreboardGames.map((g) => toEspnDate(g.startTime)))];
   for (const date of dates) {
     for (const g of await fetchScoreboard(me.league.sport, date)) {
       if (g.completed && g.winner) results.set(g.externalId, g.winner);
+    }
+  }
+
+  if (fantasyGames.length > 0) {
+    const link = await db.fantasyLink.findUnique({ where: { leagueId } });
+    if (link) {
+      const weeks = [
+        ...new Set(
+          fantasyGames.map((g) => {
+            const parsed = parseFantasyExternalId(g.externalId!);
+            return parsed.kind === "fantasy" ? parsed.week : 0;
+          })
+        ),
+      ].filter(Boolean);
+      for (const week of weeks) {
+        for (const m of await fetchFantasyMatchups(link, week)) {
+          if (m.final && m.winner) results.set(m.externalId, m.winner);
+        }
+      }
     }
   }
 

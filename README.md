@@ -18,6 +18,10 @@ NHL, tennis, MLS, and anything else you can score.
 - **Money tracker** — buy-ins, side pots, payouts, and adjustments in a ledger with
   settled/unsettled status. *Epic Pick'em tracks money; it never moves it.* No payment
   processing — settle up in cash or Venmo and mark it settled.
+- **Fantasy league pick'em** — link a Sleeper or ESPN fantasy league and import its weekly
+  head-to-head matchups as pick'em games: members pick which fantasy teams win. Public
+  ESPN leagues work with just the league ID; private ones need the espn_s2/SWID cookies.
+  Results sync automatically once a week is final.
 - **Admin area** — member management (promote/demote commissioners, remove players),
   league settings, invite management.
 - **Installable on mobile** — the site is a PWA (`manifest.json`); "Add to Home Screen"

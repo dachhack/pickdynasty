@@ -32,6 +32,7 @@ export default async function AdminSlatesPage({
   const { synced } = await searchParams;
   const me = await requireCommissioner(id);
   const autoScores = espnSupported(me.league.sport);
+  const fantasyLink = await db.fantasyLink.findUnique({ where: { leagueId: id } });
 
   const slates = await db.slate.findMany({
     where: { leagueId: id },
@@ -46,12 +47,15 @@ export default async function AdminSlatesPage({
           Results synced from ESPN.
         </p>
       )}
-      {autoScores && (
+      {(autoScores || fantasyLink) && (
         <form action={syncEspnResults} className="card flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-bold">📡 Auto results</h2>
             <p className="text-sm text-slate-400">
-              Fetch final scores from ESPN for every imported game that has started.
+              Fetch results for every imported game that has started
+              {autoScores && " — real scores from ESPN"}
+              {autoScores && fantasyLink && ","}
+              {fantasyLink && ` fantasy outcomes from ${fantasyLink.name}`}.
             </p>
           </div>
           <input type="hidden" name="leagueId" value={id} />
@@ -88,6 +92,14 @@ export default async function AdminSlatesPage({
                   className="btn-ghost !px-3 !py-1.5 !text-xs"
                 >
                   📥 Import from ESPN
+                </Link>
+              )}
+              {fantasyLink && (
+                <Link
+                  href={`/leagues/${id}/admin/slates/${slate.id}/fantasy`}
+                  className="btn-ghost !px-3 !py-1.5 !text-xs"
+                >
+                  🏆 Import fantasy matchups
                 </Link>
               )}
               <form action={deleteSlate}>

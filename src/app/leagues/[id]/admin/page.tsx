@@ -8,6 +8,7 @@ import {
   toggleRole,
   updateLeagueSettings,
 } from "@/actions/admin";
+import { linkFantasyLeague, unlinkFantasyLeague } from "@/actions/fantasy";
 import CopyField from "@/components/CopyField";
 
 export default async function AdminPage({
@@ -15,18 +16,21 @@ export default async function AdminPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; fantasyError?: string; fantasyLinked?: string }>;
 }) {
   const { id } = await params;
-  const { saved } = await searchParams;
+  const { saved, fantasyError, fantasyLinked } = await searchParams;
   const me = await requireCommissioner(id);
   const { league } = me;
 
-  const members = await db.membership.findMany({
-    where: { leagueId: id },
-    include: { user: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [members, fantasyLink] = await Promise.all([
+    db.membership.findMany({
+      where: { leagueId: id },
+      include: { user: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.fantasyLink.findUnique({ where: { leagueId: id } }),
+  ]);
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -64,6 +68,77 @@ export default async function AdminPage({
         <Link href={`/leagues/${id}/admin/slates`} className="btn mt-3 inline-flex">
           Manage slates &amp; results
         </Link>
+      </section>
+
+      <section className="card">
+        <h2 className="font-bold">🏆 Fantasy league link</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Connect a Sleeper or ESPN fantasy league to run pick&rsquo;em on its weekly head-to-head
+          matchups — members pick which fantasy teams win.
+        </p>
+        {fantasyLinked && (
+          <p className="mt-3 rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+            Fantasy league connected.
+          </p>
+        )}
+        {fantasyError && (
+          <p className="mt-3 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+            {fantasyError}
+          </p>
+        )}
+        {fantasyLink ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 p-3">
+            <div>
+              <p className="font-semibold">
+                {fantasyLink.name}
+                <span className="ml-2 rounded-full bg-indigo-950 px-2 py-0.5 text-xs font-semibold text-indigo-300">
+                  {fantasyLink.provider === "sleeper" ? "Sleeper" : "ESPN Fantasy"}
+                </span>
+              </p>
+              <p className="text-xs text-slate-500">
+                League {fantasyLink.providerLeagueId} · {fantasyLink.season} season · import
+                matchups from any slate on the slates page
+              </p>
+            </div>
+            <form action={unlinkFantasyLeague}>
+              <input type="hidden" name="leagueId" value={id} />
+              <button className="btn-danger">Unlink</button>
+            </form>
+          </div>
+        ) : (
+          <form action={linkFantasyLeague} className="mt-4 grid gap-4 sm:grid-cols-3">
+            <input type="hidden" name="leagueId" value={id} />
+            <div>
+              <label className="label" htmlFor="provider">Platform</label>
+              <select className="input" id="provider" name="provider" defaultValue="sleeper">
+                <option value="sleeper">Sleeper</option>
+                <option value="espn">ESPN Fantasy</option>
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="providerLeagueId">Fantasy league ID</label>
+              <input className="input" id="providerLeagueId" name="providerLeagueId" required placeholder="e.g. 289646328504385536" />
+            </div>
+            <div>
+              <label className="label" htmlFor="fantasySeason">Season</label>
+              <input className="input" id="fantasySeason" name="season" required defaultValue={league.season} placeholder="2026" />
+            </div>
+            <details className="text-sm text-slate-400 sm:col-span-3">
+              <summary className="cursor-pointer">Private ESPN league? (espn_s2 / SWID cookies)</summary>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="label" htmlFor="espnS2">espn_s2 cookie</label>
+                  <input className="input" id="espnS2" name="espnS2" placeholder="only needed for private ESPN leagues" />
+                </div>
+                <div>
+                  <label className="label" htmlFor="swid">SWID cookie</label>
+                  <input className="input" id="swid" name="swid" placeholder="{XXXXXXXX-XXXX-...}" />
+                </div>
+              </div>
+            </details>
+            <button className="btn sm:col-span-3 sm:justify-self-start">Connect fantasy league</button>
+          </form>
+        )}
       </section>
 
       <section className="card">

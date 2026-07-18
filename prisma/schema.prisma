@@ -38,6 +38,22 @@ model League {
   memberships Membership[]
   slates      Slate[]
   moneyEntries MoneyEntry[]
+  fantasyLink FantasyLink?
+}
+
+// Connects a pick'em league to a Sleeper or ESPN fantasy league so
+// commissioners can import weekly head-to-head matchups as pick'em games.
+model FantasyLink {
+  id               String  @id @default(cuid())
+  leagueId         String  @unique
+  provider         String // sleeper | espn
+  providerLeagueId String
+  season           String
+  name             String  @default("")
+  // ESPN private leagues require these cookies; public leagues don't.
+  espnS2           String?
+  swid             String?
+  league           League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
 }
 
 model Membership {

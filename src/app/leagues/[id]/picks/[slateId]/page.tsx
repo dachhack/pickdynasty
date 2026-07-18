@@ -71,6 +71,8 @@ export default async function SlatePicksPage({
             !league.blindPicks ||
             locked ||
             (membership.role === "COMMISSIONER" && league.adminCanSeePicks);
+          // Fantasy matchups are neutral head-to-heads, not home/away games.
+          const isFantasy = /^(sleeper|espnf):/.test(game.externalId ?? "");
           const others = game.picks.filter((p) => p.membershipId !== membership.id);
 
           return (
@@ -110,7 +112,7 @@ export default async function SlatePicksPage({
                       }`}
                     >
                       <span>
-                        {side === "AWAY" ? "@ " : ""}
+                        {side === "AWAY" && !isFantasy ? "@ " : ""}
                         {team}
                         {won && " ✅"}
                       </span>
