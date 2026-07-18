@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { SPORTS } from "@/lib/sports";
+import { FORMATS } from "@/lib/formats";
 import { createLeague } from "@/actions/leagues";
 
 export default async function NewLeaguePage() {
@@ -29,6 +30,29 @@ export default async function NewLeaguePage() {
           <div>
             <label className="label" htmlFor="season">Season</label>
             <input className="input" id="season" name="season" placeholder="2026" defaultValue={new Date().getFullYear()} />
+          </div>
+        </div>
+        <div>
+          <span className="label">Format</span>
+          <div className="flex flex-col gap-2">
+            {FORMATS.map((f, i) => (
+              <label
+                key={f.id}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-700 px-3 py-2 hover:border-slate-500"
+              >
+                <input
+                  type="radio"
+                  name="format"
+                  value={f.id}
+                  defaultChecked={i === 0}
+                  className="mt-1 h-4 w-4 accent-indigo-500"
+                />
+                <span>
+                  <span className="text-sm font-semibold">{f.emoji} {f.label}</span>
+                  <span className="block text-xs text-slate-400">{f.blurb}</span>
+                </span>
+              </label>
+            ))}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { requireCommissioner } from "@/lib/league";
+import { requireCommissioner, slateStatus, SLATE_STATUS_UI } from "@/lib/league";
 import { espnSupported } from "@/lib/espn";
 import {
   addGame,
@@ -31,13 +31,16 @@ export default async function AdminSlatesPage({
   const { synced, created } = await searchParams;
   const me = await requireCommissioner(id);
   const autoScores = espnSupported(me.league.sport);
-  const fantasyLink = await db.fantasyLink.findUnique({ where: { leagueId: id } });
-
-  const slates = await db.slate.findMany({
-    where: { leagueId: id },
-    orderBy: { order: "asc" },
-    include: { games: { orderBy: { startTime: "asc" }, include: { picks: true } } },
-  });
+  const isSurvivor = me.league.format === "survivor";
+  const [fantasyLink, members, slates] = await Promise.all([
+    db.fantasyLink.findUnique({ where: { leagueId: id } }),
+    db.membership.findMany({ where: { leagueId: id } }),
+    db.slate.findMany({
+      where: { leagueId: id },
+      orderBy: { order: "asc" },
+      include: { games: { orderBy: { startTime: "asc" }, include: { picks: true } } },
+    }),
+  ]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -79,10 +82,29 @@ export default async function AdminSlatesPage({
         </p>
       )}
 
-      {slates.map((slate) => (
+      {slates.map((slate) => {
+        // Blind-pick-safe nudge data: WHO has picked, never WHAT they picked.
+        const neededPicks = isSurvivor ? 1 : slate.games.length;
+        const complete = members.filter((m) => {
+          const count = slate.games.reduce(
+            (n, g) => n + (g.picks.some((p) => p.membershipId === m.id) ? 1 : 0), 0);
+          return count >= neededPicks;
+        });
+        const missing = members.filter((m) => !complete.includes(m));
+        const status = slateStatus(slate);
+        const ui = SLATE_STATUS_UI[status];
+        return (
         <section key={slate.id} className="card">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-bold">{slate.name}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold">{slate.name}</h2>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ui.cls}`}>{ui.label}</span>
+              {slate.games.length > 0 && (
+                <span className="text-xs text-slate-500">
+                  Picks in: {complete.length}/{members.length}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {autoScores && (
                 <Link
@@ -110,6 +132,11 @@ export default async function AdminSlatesPage({
           {slate.pickDeadline && (
             <p className="text-sm text-slate-400">Deadline: {fmt.format(slate.pickDeadline)}</p>
           )}
+          {status === "open" && missing.length > 0 && slate.games.length > 0 && (
+            <p className="mt-1 text-xs text-amber-400">
+              ⏰ Still waiting on: {missing.map((m) => `${m.teamEmoji} ${m.teamName}`).join(", ")}
+            </p>
+          )}
 
           <div className="mt-4 flex flex-col gap-3">
             {slate.games.map((game) => (
@@ -122,6 +149,12 @@ export default async function AdminSlatesPage({
                     <p className="text-xs text-slate-500">
                       {fmt.format(game.startTime)} · {game.picks.length} picks in
                       {game.externalId && " · 📡 auto-synced"}
+                      {game.spread != null && ` · line ${game.spread > 0 ? "+" : ""}${game.spread}`}
+                      {game.homeScore != null && game.awayScore != null && (
+                        <span className={game.winner ? "" : "font-semibold text-red-300"}>
+                          {" "}· {game.winner ? "final" : "🔴 live"} {game.awayScore}–{game.homeScore}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -172,7 +205,8 @@ export default async function AdminSlatesPage({
             <button className="btn self-end">Add game</button>
           </form>
         </section>
-      ))}
+        );
+      })}
     </div>
   );
 }

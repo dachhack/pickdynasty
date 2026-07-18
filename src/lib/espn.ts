@@ -39,7 +39,12 @@ export type EspnGame = {
   awayTeam: string;
   startTime: Date;
   completed: boolean;
+  started: boolean;
   winner: "HOME" | "AWAY" | "TIE" | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  // Home-perspective point spread from ESPN odds (pregame only).
+  spread: number | null;
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -59,20 +64,27 @@ async function espnScoreboard(sport: string, query: string): Promise<EspnGame[]>
     const away = comp?.competitors?.find((c: any) => c.homeAway === "away");
     if (!home || !away) continue;
 
+    const statusName: string = comp.status?.type?.name ?? "";
     const completed = Boolean(comp.status?.type?.completed);
+    const started = completed || statusName === "STATUS_IN_PROGRESS" || statusName === "STATUS_HALFTIME" || statusName === "STATUS_END_PERIOD";
+    const hs = home.score != null ? parseFloat(home.score) : NaN;
+    const as = away.score != null ? parseFloat(away.score) : NaN;
     let winner: EspnGame["winner"] = null;
-    if (completed) {
-      const hs = parseFloat(home.score ?? "0");
-      const as = parseFloat(away.score ?? "0");
+    if (completed && !isNaN(hs) && !isNaN(as)) {
       winner = hs > as ? "HOME" : as > hs ? "AWAY" : "TIE";
     }
+    const rawSpread = comp.odds?.[0]?.spread;
     games.push({
       externalId: String(event.id),
       homeTeam: home.team?.displayName ?? "Home",
       awayTeam: away.team?.displayName ?? "Away",
       startTime: new Date(event.date),
       completed,
+      started,
       winner,
+      homeScore: started && !isNaN(hs) ? hs : null,
+      awayScore: started && !isNaN(as) ? as : null,
+      spread: typeof rawSpread === "number" ? rawSpread : null,
     });
   }
   games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());

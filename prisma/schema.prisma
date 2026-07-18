@@ -32,6 +32,8 @@ model League {
   sport       String // one of SPORTS in src/lib/sports.ts
   season      String // e.g. "2026"
   inviteCode  String       @unique
+  // classic | confidence | survivor | spread — see src/lib/formats.ts
+  format      String       @default("classic")
   // Blind picks: other players' picks stay hidden until each game locks.
   blindPicks  Boolean      @default(true)
   // Commissioner may view hidden picks (for dispute resolution).
@@ -75,6 +77,7 @@ model Membership {
   league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   picks     Pick[]
   moneyEntries MoneyEntry[]
+  tiebreakers TiebreakerGuess[]
 
   @@unique([userId, leagueId])
 }
@@ -90,6 +93,7 @@ model Slate {
   pickDeadline DateTime?
   league       League    @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   games        Game[]
+  tiebreakers  TiebreakerGuess[]
   createdAt    DateTime  @default(now())
 }
 
@@ -99,8 +103,15 @@ model Game {
   homeTeam  String
   awayTeam  String
   startTime DateTime
-  // null = not decided; HOME | AWAY | TIE
+  // null = not decided; HOME | AWAY | TIE.
+  // In spread leagues this is the AGAINST-THE-SPREAD result, not the SU winner.
   winner    String?
+  // Live/final score, updated by result sync while games are in progress.
+  homeScore Int?
+  awayScore Int?
+  // Point spread from the HOME team's perspective (e.g. -3.5 = home favored),
+  // imported from ESPN odds. Only used by spread-format leagues.
+  spread    Float?
   // ESPN event id when the game was imported — enables automatic result sync.
   externalId String?
   slate     Slate     @relation(fields: [slateId], references: [id], onDelete: Cascade)
@@ -113,11 +124,26 @@ model Pick {
   gameId       String
   membershipId String
   choice       String // HOME | AWAY
+  // Confidence-format rank: 1 (least sure) .. N games (most sure).
+  confidence   Int?
   updatedAt    DateTime   @updatedAt
   game         Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
   membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
 
   @@unique([gameId, membershipId])
+}
+
+// Tiebreaker: each member predicts the total combined points of the slate's
+// last-starting game. Closest guess wins ties on that slate.
+model TiebreakerGuess {
+  id           String     @id @default(cuid())
+  slateId      String
+  membershipId String
+  value        Int
+  slate        Slate      @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([slateId, membershipId])
 }
 
 // Money tracker only — no payment processing. Positive amounts are money

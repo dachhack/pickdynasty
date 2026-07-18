@@ -7,6 +7,13 @@ NHL, tennis, MLS, and anything else you can score.
 ## Features
 
 - **Leagues for any sport** — create a league, pick the sport and season, set a buy-in.
+- **Four formats** — classic pick'em (1 pt per correct pick), confidence points (rank picks
+  1–N, correct picks score their rank), survivor (one team per slate, never reuse a team,
+  lose and you're out), and against-the-spread (lines imported from ESPN odds).
+- **Tiebreakers** — predict the total score of each slate's last game; closest wins ties.
+- **Live scores & recaps** — in-progress and final scores sync from ESPN onto the picks
+  page, and every finished slate gets an auto-generated recap (best performer, biggest
+  upset, tiebreaker result — or survivor eliminations).
 - **Invites** — every league gets a short invite code and shareable join link; commissioners
   can regenerate it at any time.
 - **Blind picks** — everyone's picks stay hidden until each game locks (at kickoff, or at a

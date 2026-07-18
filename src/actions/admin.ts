@@ -12,12 +12,14 @@ export async function updateLeagueSettings(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const season = String(formData.get("season") ?? "").trim();
   const buyIn = Number(formData.get("buyIn") ?? 0) || 0;
+  const format = String(formData.get("format") ?? "");
 
   await db.league.update({
     where: { id: leagueId },
     data: {
       ...(name ? { name } : {}),
       ...(season ? { season } : {}),
+      ...(["classic", "confidence", "survivor", "spread"].includes(format) ? { format } : {}),
       buyIn,
       blindPicks: formData.get("blindPicks") === "on",
       adminCanSeePicks: formData.get("adminCanSeePicks") === "on",

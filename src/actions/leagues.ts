@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { makeInviteCode, requireMembership } from "@/lib/league";
 import { SPORTS } from "@/lib/sports";
+import { FORMATS } from "@/lib/formats";
 
 export async function createLeague(formData: FormData) {
   const user = await getCurrentUser();
@@ -14,18 +15,21 @@ export async function createLeague(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const sport = String(formData.get("sport") ?? "other");
   const season = String(formData.get("season") ?? "").trim() || String(new Date().getFullYear());
+  const format = String(formData.get("format") ?? "classic");
   const buyIn = Number(formData.get("buyIn") ?? 0) || 0;
   const blindPicks = formData.get("blindPicks") === "on";
   const teamName = String(formData.get("teamName") ?? "").trim() || `${user.name}'s Team`;
 
   if (!name) redirect("/leagues/new");
   if (!SPORTS.some((s) => s.id === sport)) redirect("/leagues/new");
+  if (!FORMATS.some((f) => f.id === format)) redirect("/leagues/new");
 
   const league = await db.league.create({
     data: {
       name,
       sport,
       season,
+      format,
       buyIn,
       blindPicks,
       inviteCode: makeInviteCode(),

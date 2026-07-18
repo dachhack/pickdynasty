@@ -36,6 +36,9 @@ export async function importEspnGames(formData: FormData) {
         startTime: g.startTime,
         externalId: g.externalId,
         winner: g.winner,
+        homeScore: g.homeScore,
+        awayScore: g.awayScore,
+        spread: g.spread,
       },
     });
   }

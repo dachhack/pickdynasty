@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireMembership } from "@/lib/league";
+import { formatMeta } from "@/lib/formats";
 import { sportEmoji, sportLabel } from "@/lib/sports";
 
 export default async function LeagueLayout({
@@ -29,7 +30,8 @@ export default async function LeagueLayout({
         <div>
           <h1 className="text-2xl font-black">{league.name}</h1>
           <p className="text-sm text-slate-400">
-            {sportLabel(league.sport)} · {league.season} season
+            {sportLabel(league.sport)} · {league.season} season ·{" "}
+            {formatMeta(league.format).emoji} {formatMeta(league.format).label}
             {league.blindPicks && " · 🕶️ blind picks"}
           </p>
         </div>

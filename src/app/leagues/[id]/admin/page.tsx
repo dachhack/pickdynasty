@@ -9,6 +9,7 @@ import {
   updateLeagueSettings,
 } from "@/actions/admin";
 import { linkFantasyLeague, unlinkFantasyLeague } from "@/actions/fantasy";
+import { FORMATS } from "@/lib/formats";
 import CopyField from "@/components/CopyField";
 
 export default async function AdminPage({
@@ -156,6 +157,17 @@ export default async function AdminPage({
           <div>
             <label className="label" htmlFor="buyIn">Buy-in ($)</label>
             <input className="input" id="buyIn" name="buyIn" type="number" min="0" step="1" defaultValue={league.buyIn} />
+          </div>
+          <div className="sm:col-span-3">
+            <label className="label" htmlFor="format">Format</label>
+            <select className="input sm:max-w-xs" id="format" name="format" defaultValue={league.format}>
+              {FORMATS.map((f) => (
+                <option key={f.id} value={f.id}>{f.emoji} {f.label}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-amber-400">
+              ⚠️ Changing format mid-season rescores all existing picks under the new rules.
+            </p>
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-300 sm:col-span-3">
             <input type="checkbox" name="blindPicks" defaultChecked={league.blindPicks} className="h-4 w-4 accent-indigo-500" />

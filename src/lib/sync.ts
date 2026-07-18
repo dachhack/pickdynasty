@@ -1,14 +1,20 @@
 import { db } from "./db";
-import { fetchScoreboard, toEspnDate } from "./espn";
+import { fetchScoreboard, toEspnDate, type EspnGame } from "./espn";
 import { fetchFantasyMatchups, parseFantasyExternalId } from "./fantasy";
+import { atsWinner } from "./formats";
 
 /**
  * Resolves results for every imported, undecided, started game in a league —
- * real-sport scores from the ESPN scoreboard and fantasy matchup outcomes
- * from the linked Sleeper/ESPN fantasy league. Returns the number updated.
- * Shared by the commissioner's "Sync results" action and the cron endpoint.
+ * real-sport scores (live and final) from the ESPN scoreboard and fantasy
+ * matchup outcomes from the linked Sleeper/ESPN fantasy league. In spread
+ * leagues the recorded winner is the against-the-spread result. Returns the
+ * number of games updated. Shared by the commissioner's "Sync results"
+ * action and the cron endpoint.
  */
 export async function syncLeagueResults(leagueId: string, sport: string): Promise<number> {
+  const league = await db.league.findUnique({ where: { id: leagueId } });
+  if (!league) return 0;
+
   const pending = await db.game.findMany({
     where: {
       slate: { leagueId },
@@ -27,10 +33,12 @@ export async function syncLeagueResults(leagueId: string, sport: string): Promis
   );
 
   const results = new Map<string, "HOME" | "AWAY" | "TIE">();
+  const liveScores = new Map<string, EspnGame>();
 
   const dates = [...new Set(scoreboardGames.map((g) => toEspnDate(g.startTime)))];
   for (const date of dates) {
     for (const g of await fetchScoreboard(sport, date)) {
+      if (g.started) liveScores.set(g.externalId, g);
       if (g.completed && g.winner) results.set(g.externalId, g.winner);
     }
   }
@@ -56,9 +64,23 @@ export async function syncLeagueResults(leagueId: string, sport: string): Promis
 
   let updated = 0;
   for (const game of pending) {
-    const winner = game.externalId ? results.get(game.externalId) : undefined;
-    if (winner) {
-      await db.game.update({ where: { id: game.id }, data: { winner } });
+    const live = game.externalId ? liveScores.get(game.externalId) : undefined;
+    let winner = game.externalId ? results.get(game.externalId) : undefined;
+
+    // Spread leagues score against the line, not straight-up.
+    if (winner && league.format === "spread" && game.spread != null && live?.homeScore != null && live?.awayScore != null) {
+      winner = atsWinner(live.homeScore, live.awayScore, game.spread);
+    }
+
+    if (winner || live) {
+      await db.game.update({
+        where: { id: game.id },
+        data: {
+          ...(winner ? { winner } : {}),
+          ...(live?.homeScore != null ? { homeScore: live.homeScore } : {}),
+          ...(live?.awayScore != null ? { awayScore: live.awayScore } : {}),
+        },
+      });
       updated++;
     }
   }

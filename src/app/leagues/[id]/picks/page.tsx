@@ -1,20 +1,20 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { requireMembership } from "@/lib/league";
+import { requireMembership, slateStatus, SLATE_STATUS_UI } from "@/lib/league";
 
-// Slate index: pick the latest slate or list all.
 export default async function PicksIndex({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireMembership(id);
+  const membership = await requireMembership(id);
+  const isSurvivor = membership.league.format === "survivor";
 
   const slates = await db.slate.findMany({
     where: { leagueId: id },
     orderBy: { order: "asc" },
-    include: { games: true },
+    include: { games: { include: { picks: { where: { membershipId: membership.id } } } } },
   });
 
   if (slates.length === 0) {
@@ -28,26 +28,33 @@ export default async function PicksIndex({
     );
   }
 
-  const now = new Date();
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {slates.map((s) => {
-        const decided = s.games.filter((g) => g.winner).length;
-        const upcoming = s.games.some((g) => g.startTime > now);
+        const status = slateStatus(s);
+        const ui = SLATE_STATUS_UI[status];
+        const myPicks = s.games.filter((g) => g.picks.length > 0).length;
+        const needed = isSurvivor ? 1 : s.games.length;
+        const done = myPicks >= needed;
+        const cta =
+          status === "open"
+            ? done
+              ? "Review picks"
+              : isSurvivor
+                ? "⚠️ Pick your team"
+                : `⚠️ Make picks (${myPicks}/${needed})`
+            : "View results";
         return (
           <Link key={s.id} href={`/leagues/${id}/picks/${s.id}`} className="card transition hover:border-indigo-600">
             <div className="flex items-center justify-between">
               <h2 className="font-bold">{s.name}</h2>
-              {upcoming ? (
-                <span className="rounded-full bg-emerald-950 px-2 py-0.5 text-xs font-semibold text-emerald-300">Open</span>
-              ) : decided === s.games.length && s.games.length > 0 ? (
-                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">Final</span>
-              ) : (
-                <span className="rounded-full bg-amber-950 px-2 py-0.5 text-xs text-amber-300">In progress</span>
-              )}
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ui.cls}`}>{ui.label}</span>
             </div>
             <p className="mt-1 text-sm text-slate-400">
-              {s.games.length} games · {decided} decided
+              {s.games.length} games · you&rsquo;ve picked {myPicks}/{needed}
+            </p>
+            <p className={`mt-2 text-sm font-semibold ${status === "open" && !done ? "text-amber-400" : "text-indigo-400"}`}>
+              {cta} →
             </p>
           </Link>
         );
