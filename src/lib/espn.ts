@@ -22,6 +22,17 @@ export function espnSupported(sport: string): boolean {
   return sport in ESPN_PATHS;
 }
 
+// Sports whose schedules are organized in numbered weeks (ESPN supports
+// querying them directly by week). Everything else imports by date range.
+export const WEEKLY_SPORTS: Record<string, { maxWeek: number }> = {
+  nfl: { maxWeek: 18 },
+  cfb: { maxWeek: 15 },
+};
+
+export function isWeeklySport(sport: string): boolean {
+  return sport in WEEKLY_SPORTS;
+}
+
 export type EspnGame = {
   externalId: string;
   homeTeam: string;
@@ -32,14 +43,11 @@ export type EspnGame = {
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export async function fetchScoreboard(
-  sport: string,
-  dateYYYYMMDD: string
-): Promise<EspnGame[]> {
+async function espnScoreboard(sport: string, query: string): Promise<EspnGame[]> {
   const cfg = ESPN_PATHS[sport];
   if (!cfg) return [];
   const groups = cfg.groups ? `&groups=${cfg.groups}` : "";
-  const url = `https://site.api.espn.com/apis/site/v2/sports/${cfg.path}/scoreboard?dates=${dateYYYYMMDD}&limit=300${groups}`;
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${cfg.path}/scoreboard?${query}&limit=300${groups}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`ESPN API returned ${res.status}`);
   const data: any = await res.json();
@@ -69,6 +77,38 @@ export async function fetchScoreboard(
   }
   games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   return games;
+}
+
+/** Games on a single day (`YYYYMMDD`) or range (`YYYYMMDD-YYYYMMDD`). */
+export async function fetchScoreboard(sport: string, dates: string): Promise<EspnGame[]> {
+  return espnScoreboard(sport, `dates=${dates}`);
+}
+
+/** All games in a numbered regular-season week (NFL / college football). */
+export async function fetchWeekScoreboard(
+  sport: string,
+  season: string,
+  week: number
+): Promise<EspnGame[]> {
+  return espnScoreboard(sport, `dates=${season}&seasontype=2&week=${week}`);
+}
+
+/** ESPN's notion of the current week for a weekly sport, or null off-season. */
+export async function fetchCurrentWeek(sport: string): Promise<number | null> {
+  const cfg = ESPN_PATHS[sport];
+  if (!cfg) return null;
+  try {
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/${cfg.path}/scoreboard`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    const week = Number(data?.week?.number);
+    return Number.isInteger(week) && week > 0 ? week : null;
+  } catch {
+    return null;
+  }
 }
 
 const etDate = new Intl.DateTimeFormat("en-CA", {

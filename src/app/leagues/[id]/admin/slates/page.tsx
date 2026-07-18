@@ -4,7 +4,6 @@ import { requireCommissioner } from "@/lib/league";
 import { espnSupported } from "@/lib/espn";
 import {
   addGame,
-  createSlate,
   deleteGame,
   deleteSlate,
   setResult,
@@ -26,10 +25,10 @@ export default async function AdminSlatesPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ synced?: string }>;
+  searchParams: Promise<{ synced?: string; created?: string }>;
 }) {
   const { id } = await params;
-  const { synced } = await searchParams;
+  const { synced, created } = await searchParams;
   const me = await requireCommissioner(id);
   const autoScores = espnSupported(me.league.sport);
   const fantasyLink = await db.fantasyLink.findUnique({ where: { leagueId: id } });
@@ -47,6 +46,17 @@ export default async function AdminSlatesPage({
           Results synced from ESPN.
         </p>
       )}
+      {created && (
+        <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+          🚀 Season autopilot created {created} {Number(created) === 1 ? "slate" : "slates"}.
+        </p>
+      )}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold">Slates</h2>
+        <Link href={`/leagues/${id}/admin/slates/new`} className="btn">
+          ➕ New slate
+        </Link>
+      </div>
       {(autoScores || fantasyLink) && (
         <form action={syncEspnResults} className="card flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -62,24 +72,12 @@ export default async function AdminSlatesPage({
           <button className="btn">Sync results now</button>
         </form>
       )}
-      <section className="card max-w-xl">
-        <h2 className="font-bold">➕ New slate</h2>
-        <p className="mt-1 text-sm text-slate-400">
-          A slate is one round of games — an NFL week, a tournament round, a day of games.
+      {slates.length === 0 && (
+        <p className="card text-center text-slate-400">
+          No slates yet — hit <span className="font-semibold text-slate-200">➕ New slate</span> to
+          import a week of games in a couple of taps.
         </p>
-        <form action={createSlate} className="mt-3 grid gap-3 sm:grid-cols-3">
-          <input type="hidden" name="leagueId" value={id} />
-          <div className="sm:col-span-2">
-            <label className="label">Name</label>
-            <input className="input" name="name" required placeholder="Week 1" />
-          </div>
-          <div>
-            <label className="label">Deadline (optional)</label>
-            <input className="input" name="pickDeadline" type="datetime-local" />
-          </div>
-          <button className="btn sm:col-span-3 sm:justify-self-start">Create slate</button>
-        </form>
-      </section>
+      )}
 
       {slates.map((slate) => (
         <section key={slate.id} className="card">
