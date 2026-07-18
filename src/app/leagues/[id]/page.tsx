@@ -1,10 +1,13 @@
 import {
   buildRecaps,
+  computeMovement,
   computeStandingsFrom,
   loadLeagueForStandings,
   requireMembership,
 } from "@/lib/league";
 import { formatMeta } from "@/lib/formats";
+import { REACTION_EMOJIS } from "@/lib/reactions";
+import RecapReactions, { type ReactionView } from "@/components/RecapReactions";
 
 export default async function LeagueHome({
   params,
@@ -16,6 +19,21 @@ export default async function LeagueHome({
   const league = await loadLeagueForStandings(id);
   const standings = computeStandingsFrom(league);
   const recaps = buildRecaps(league);
+  const movement = computeMovement(league);
+  const reactionsBySlate = new Map(
+    league.slates.map((s) => {
+      const views: ReactionView[] = REACTION_EMOJIS.map((emoji) => {
+        const rows = s.reactions.filter((r) => r.emoji === emoji);
+        return {
+          emoji,
+          count: rows.length,
+          mine: rows.some((r) => r.membershipId === membership.id),
+          who: rows.map((r) => r.membership.teamName).join(", "),
+        };
+      });
+      return [s.id, views];
+    })
+  );
   const meta = formatMeta(league.format);
   const isSurvivor = league.format === "survivor";
   const isConfidence = league.format === "confidence";
@@ -51,11 +69,32 @@ export default async function LeagueHome({
                   row.membershipId === membership.id ? "bg-indigo-950/30" : ""
                 } ${isSurvivor && !row.alive ? "opacity-50" : ""}`}
               >
-                <td className="px-4 py-3 font-bold text-slate-500">{i + 1}</td>
+                <td className="px-4 py-3 font-bold text-slate-500">
+                  {i + 1}
+                  {movement && (movement.get(row.membershipId) ?? 0) !== 0 && (
+                    <span
+                      className={`ml-1 text-xs font-bold ${
+                        movement.get(row.membershipId)! > 0 ? "text-emerald-400" : "text-red-400"
+                      }`}
+                    >
+                      {movement.get(row.membershipId)! > 0
+                        ? `▲${movement.get(row.membershipId)}`
+                        : `▼${-movement.get(row.membershipId)!}`}
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className="font-semibold" style={{ color: row.teamColor }}>
                     {row.teamEmoji} {row.teamName}
                   </span>
+                  {row.streak >= 3 && (
+                    <span
+                      className="ml-2 rounded-full bg-orange-950 px-1.5 py-0.5 text-xs font-bold text-orange-300"
+                      title={`${row.streak} correct picks in a row`}
+                    >
+                      🔥{row.streak}
+                    </span>
+                  )}
                   <span className="ml-2 text-xs text-slate-500">{row.userName}</span>
                 </td>
                 {isSurvivor ? (
@@ -104,6 +143,11 @@ export default async function LeagueHome({
                   <li key={i}>{line}</li>
                 ))}
               </ul>
+              <RecapReactions
+                leagueId={id}
+                slateId={r.slateId}
+                initial={reactionsBySlate.get(r.slateId) ?? []}
+              />
             </div>
           ))}
         </section>

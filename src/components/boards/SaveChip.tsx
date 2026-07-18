@@ -14,7 +14,7 @@ export default function SaveChip({ state }: { state: SaveState }) {
         }`}
       >
         {state.kind === "saving" && "Saving…"}
-        {state.kind === "saved" && "Saved ✓"}
+        {state.kind === "saved" && (state.message ?? "Saved ✓")}
         {state.kind === "error" && state.message}
       </span>
     </div>

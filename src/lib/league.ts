@@ -48,6 +48,7 @@ export type StandingsRow = {
   correct: number;
   decided: number;
   pct: number;
+  streak: number; // trailing consecutive correct picks (🔥 fuel)
   // Survivor only:
   alive?: boolean;
   eliminatedIn?: string; // slate name
@@ -65,10 +66,31 @@ export async function loadLeagueForStandings(leagueId: string) {
         include: {
           games: { orderBy: { startTime: "asc" }, include: { picks: true } },
           tiebreakers: true,
+          reactions: { include: { membership: true } },
         },
       },
     },
   });
+}
+
+/** Trailing consecutive correct picks across all decided games, in play order. */
+function computeStreak(league: LeagueForStandings, membershipId: string): number {
+  const decided = league.slates
+    .flatMap((s) => s.games)
+    .filter((g) => g.winner && g.winner !== "TIE")
+    .sort(
+      (a, b) =>
+        a.startTime.getTime() - b.startTime.getTime() ||
+        a.createdAt.getTime() - b.createdAt.getTime()
+    );
+  let streak = 0;
+  for (let i = decided.length - 1; i >= 0; i--) {
+    const pick = decided[i].picks.find((p) => p.membershipId === membershipId);
+    if (!pick) continue; // unpicked games don't break a streak
+    if (pick.choice !== decided[i].winner) break;
+    streak++;
+  }
+  return streak;
 }
 
 export function computeStandingsFrom(league: LeagueForStandings): StandingsRow[] {
@@ -79,6 +101,7 @@ export function computeStandingsFrom(league: LeagueForStandings): StandingsRow[]
       teamColor: m.teamColor,
       teamEmoji: m.teamEmoji,
       userName: m.user.name,
+      streak: computeStreak(league, m.id),
     };
 
     let points = 0;
@@ -159,6 +182,39 @@ export function usedSurvivorTeams(
     }
   }
   return used;
+}
+
+// ---------------- Rank movement (▲2 / ▼1 since the last final slate) ----------------
+
+/**
+ * Rank delta per member vs. standings before the most recent fully-decided
+ * slate. Positive = climbed. Null when no slate has finished yet.
+ */
+export function computeMovement(league: LeagueForStandings): Map<string, number> | null {
+  const finalSlates = league.slates.filter(
+    (s) => s.games.length > 0 && s.games.every((g) => g.winner)
+  );
+  if (finalSlates.length === 0) return null;
+  const lastFinal = finalSlates[finalSlates.length - 1];
+
+  // Re-run standings as if the last final slate hadn't been decided.
+  const before: LeagueForStandings = {
+    ...league,
+    slates: league.slates.map((s) =>
+      s.id === lastFinal.id
+        ? { ...s, games: s.games.map((g) => ({ ...g, winner: null })) }
+        : s
+    ),
+  };
+  const prevRank = new Map(
+    computeStandingsFrom(before).map((row, i) => [row.membershipId, i + 1])
+  );
+  const movement = new Map<string, number>();
+  computeStandingsFrom(league).forEach((row, i) => {
+    const prev = prevRank.get(row.membershipId);
+    movement.set(row.membershipId, prev == null ? 0 : prev - (i + 1));
+  });
+  return movement;
 }
 
 // ---------------- Weekly recaps ----------------

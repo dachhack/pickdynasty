@@ -80,6 +80,33 @@ export async function quickSurvivorPick(input: {
   return { ok: true };
 }
 
+/** Quick-pick helpers (all home / all favorites / coin flip): bulk save. */
+export async function quickPickBulk(input: {
+  leagueId: string;
+  slateId: string;
+  picks: { gameId: string; choice: "HOME" | "AWAY" }[];
+}): Promise<QuickResult> {
+  const membership = await requireMembership(input.leagueId);
+  const slate = await db.slate.findFirst({
+    where: { id: input.slateId, leagueId: input.leagueId },
+    include: { games: true },
+  });
+  if (!slate) return { ok: false, error: "Slate not found." };
+
+  for (const pick of input.picks) {
+    const game = slate.games.find((g) => g.id === pick.gameId);
+    if (!game || isGameLocked(game, slate.pickDeadline)) continue;
+    if (pick.choice !== "HOME" && pick.choice !== "AWAY") continue;
+    await db.pick.upsert({
+      where: { gameId_membershipId: { gameId: game.id, membershipId: membership.id } },
+      update: { choice: pick.choice },
+      create: { gameId: game.id, membershipId: membership.id, choice: pick.choice },
+    });
+  }
+  revalidatePath(`/leagues/${input.leagueId}/picks/${input.slateId}`);
+  return { ok: true };
+}
+
 /** Confidence: save the whole board (choices + drag-assigned ranks) at once. */
 export async function saveConfidenceBoard(input: {
   leagueId: string;

@@ -78,6 +78,7 @@ model Membership {
   picks     Pick[]
   moneyEntries MoneyEntry[]
   tiebreakers TiebreakerGuess[]
+  reactions Reaction[]
 
   @@unique([userId, leagueId])
 }
@@ -94,6 +95,7 @@ model Slate {
   league       League    @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   games        Game[]
   tiebreakers  TiebreakerGuess[]
+  reactions    Reaction[]
   createdAt    DateTime  @default(now())
 }
 
@@ -131,6 +133,19 @@ model Pick {
   membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
 
   @@unique([gameId, membershipId])
+}
+
+// One-tap emoji reactions on a slate's recap (🔥😂💀🎯). Toggled on/off.
+model Reaction {
+  id           String     @id @default(cuid())
+  slateId      String
+  membershipId String
+  emoji        String
+  createdAt    DateTime   @default(now())
+  slate        Slate      @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([slateId, membershipId, emoji])
 }
 
 // Tiebreaker: each member predicts the total combined points of the slate's

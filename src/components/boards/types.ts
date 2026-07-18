@@ -29,5 +29,5 @@ export type GameView = {
 export type SaveState =
   | { kind: "idle" }
   | { kind: "saving" }
-  | { kind: "saved" }
+  | { kind: "saved"; message?: string }
   | { kind: "error"; message: string };

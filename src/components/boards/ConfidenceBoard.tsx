@@ -22,6 +22,7 @@ import { saveConfidenceBoard } from "@/actions/quickpicks";
 import type { GameView, SaveState } from "./types";
 import SaveChip from "./SaveChip";
 import { OthersLine, StatusChip } from "./GameMeta";
+import { celebrate, tapHaptic } from "./celebrate";
 
 /**
  * Drag-to-rank confidence board: order your games from surest (top, worth
@@ -75,6 +76,10 @@ export default function ConfidenceBoard({
     }
   }
 
+  const wasComplete = useRef(
+    unlockedInitial.length > 0 && unlockedInitial.every((g) => g.myChoice)
+  );
+
   function persist(nextOrder: string[], nextChoices: Record<string, "HOME" | "AWAY">) {
     const picks = nextOrder
       .map((id, i) => ({ gameId: id, choice: nextChoices[id], confidence: availableRanks[i] }))
@@ -82,11 +87,18 @@ export default function ConfidenceBoard({
         Boolean(p.choice && p.confidence)
       );
     if (picks.length === 0) return;
+    const complete = nextOrder.length > 0 && nextOrder.every((id) => nextChoices[id]);
     setSave({ kind: "saving" });
     startTransition(async () => {
       try {
         const result = await saveConfidenceBoard({ leagueId, slateId, picks });
-        flash(result.ok ? { kind: "saved" } : { kind: "error", message: result.error });
+        if (result.ok && complete && !wasComplete.current) {
+          wasComplete.current = true;
+          celebrate();
+          flash({ kind: "saved", message: "Board complete — locked and loaded 🎉" });
+        } else {
+          flash(result.ok ? { kind: "saved" } : { kind: "error", message: result.error });
+        }
       } catch {
         flash({ kind: "error", message: "Couldn't save — try again." });
       }
@@ -96,12 +108,14 @@ export default function ConfidenceBoard({
   function onDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+    tapHaptic();
     const next = arrayMove(order, order.indexOf(String(active.id)), order.indexOf(String(over.id)));
     setOrder(next);
     persist(next, choices);
   }
 
   function onPick(gameId: string, side: "HOME" | "AWAY") {
+    tapHaptic();
     const next = { ...choices, [gameId]: side };
     setChoices(next);
     persist(order, next);
