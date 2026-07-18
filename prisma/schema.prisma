@@ -79,6 +79,8 @@ model Game {
   startTime DateTime
   // null = not decided; HOME | AWAY | TIE
   winner    String?
+  // ESPN event id when the game was imported — enables automatic result sync.
+  externalId String?
   slate     Slate     @relation(fields: [slateId], references: [id], onDelete: Cascade)
   picks     Pick[]
   createdAt DateTime  @default(now())
