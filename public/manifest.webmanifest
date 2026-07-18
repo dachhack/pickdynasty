@@ -1,0 +1,13 @@
+{
+  "name": "PickDynasty",
+  "short_name": "PickDynasty",
+  "description": "Set up, track, administer, and compete in pick'em leagues with friends — for every sport.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#1b6ff5",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

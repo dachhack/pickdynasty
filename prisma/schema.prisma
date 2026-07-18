@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
+  ledgerEntries LedgerEntry[] @relation("LedgerCreatedBy")
+}
+
+model League {
+  id           String       @id @default(cuid())
+  name         String
+  sport        String
+  season       String
+  description  String?
+  pickType     String       @default("STRAIGHT_UP") // STRAIGHT_UP | AGAINST_SPREAD
+  blindPicks   Boolean      @default(true)
+  buyInCents   Int          @default(0)
+  currency     String       @default("USD")
+  inviteCode   String       @unique
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
+  rounds       Round[]
+  ledger       LedgerEntry[]
+  invitations  Invitation[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  leagueId  String
+  role      String   @default("PLAYER") // COMMISSIONER | ADMIN | PLAYER
+  status    String   @default("ACTIVE") // ACTIVE | REMOVED
+  teamName  String?
+  teamColor String   @default("#1b6ff5")
+  teamEmoji String   @default("🏆")
+  teamMotto String?
+  joinedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  picks     Pick[]
+  ledger    LedgerEntry[]
+
+  @@unique([userId, leagueId])
+}
+
+model Round {
+  id        String   @id @default(cuid())
+  leagueId  String
+  name      String // e.g. "Week 1", "Round of 64", "Championship"
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  games     Game[]
+
+  @@unique([leagueId, name])
+}
+
+model Game {
+  id          String    @id @default(cuid())
+  roundId     String
+  homeTeam    String
+  awayTeam    String
+  spread      Float? // home-team spread, e.g. -3.5 means home favored by 3.5
+  points      Int       @default(1) // points awarded for a correct pick
+  locksAt     DateTime // picks lock at this time (usually kickoff/first pitch/tip-off)
+  homeScore   Int?
+  awayScore   Int?
+  winner      String? // HOME | AWAY | TIE | VOID (set by admin when final)
+  createdAt   DateTime  @default(now())
+  round       Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  picks       Pick[]
+}
+
+model Pick {
+  id           String     @id @default(cuid())
+  gameId       String
+  membershipId String
+  choice       String // HOME | AWAY
+  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime   @default(now())
+  game         Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, membershipId])
+}
+
+model LedgerEntry {
+  id           String      @id @default(cuid())
+  leagueId     String
+  membershipId String?
+  type         String // BUY_IN | PAYMENT | PAYOUT | ADJUSTMENT
+  amountCents  Int // positive = money owed TO the pot was received / credited; sign conventions handled in app
+  note         String?
+  createdById  String?
+  createdAt    DateTime    @default(now())
+  league       League      @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  membership   Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  createdBy    User?       @relation("LedgerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+model Invitation {
+  id        String   @id @default(cuid())
+  leagueId  String
+  email     String?
+  code      String   @unique
+  status    String   @default("PENDING") // PENDING | ACCEPTED | REVOKED
+  createdAt DateTime @default(now())
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+}
