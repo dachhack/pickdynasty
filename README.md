@@ -54,10 +54,15 @@ products), **Fly.io** hosting, **GitHub Actions** for CI and scheduled result sy
 
 ```bash
 npm install
-cp .env.example .env       # point DATABASE_URL/DIRECT_URL at any Postgres
+docker compose up -d       # local Postgres (or point .env at any Postgres)
+cp .env.example .env       # set DATABASE_URL/DIRECT_URL to postgresql://epic:epic@localhost:5432/epicpickem
 npx prisma migrate deploy
 npm run dev                # http://localhost:3000
 ```
+
+> Note: the app can't run on GitHub Pages — Pages serves static files only, and
+> Epic Pick'em needs its Node server and Postgres. Use local dev above or a Fly
+> staging app (see `DEPLOYMENT.md`) for a shareable test URL.
 
 Sign up, create a league, and share the invite link from **Admin → Invite players**.
 

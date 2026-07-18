@@ -1,0 +1,18 @@
+# Local dev database only — the app itself runs with `npm run dev`.
+#   docker compose up -d
+#   cp .env.example .env   (the defaults below match .env.local-docker values)
+#   npx prisma migrate deploy && npm run dev
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: epic
+      POSTGRES_PASSWORD: epic
+      POSTGRES_DB: epicpickem
+    ports:
+      - "5432:5432"
+    volumes:
+      - epicpickem-pgdata:/var/lib/postgresql/data
+
+volumes:
+  epicpickem-pgdata:
