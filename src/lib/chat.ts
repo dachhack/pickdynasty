@@ -12,13 +12,14 @@ export type MessageView = {
   reactions: { emoji: string; count: number; mine: boolean; who: string }[];
 };
 
-// GIF URLs are restricted to known media hosts so chat can't embed arbitrary images.
-const GIF_HOSTS = new Set(["media.tenor.com", "media.giphy.com", "i.giphy.com"]);
+// GIF URLs are restricted to known media hosts so chat can't embed arbitrary
+// images. GIPHY serves from numbered subdomains (media0..media4.giphy.com).
+const GIF_HOST_PATTERN = /^(media\.tenor\.com|media\d*\.giphy\.com|i\.giphy\.com)$/;
 
 export function isAllowedGifUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.protocol === "https:" && GIF_HOSTS.has(u.hostname);
+    return u.protocol === "https:" && GIF_HOST_PATTERN.test(u.hostname);
   } catch {
     return false;
   }

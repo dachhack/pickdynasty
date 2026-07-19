@@ -209,7 +209,7 @@ export default function ChatRoom({
           >
             <input
               className="input"
-              placeholder="Search Tenor GIFs…"
+              placeholder="Search GIFs…"
               value={gifQuery}
               onChange={(e) => setGifQuery(e.target.value)}
               autoFocus

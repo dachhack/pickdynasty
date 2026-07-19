@@ -14,7 +14,7 @@
 #      Optional: STAGING_SUPABASE_URL + STAGING_SUPABASE_ANON_KEY to enable
 #      Supabase Auth (shared accounts with Drip) — without them staging uses
 #      the built-in email/password auth, which is fine for testing.
-#      Optional: TENOR_API_KEY to light up GIF search in chat.
+#      Optional: GIPHY_API_KEY to light up GIF search in chat.
 #   4. Actions tab → "Deploy staging (Fly)" → Run workflow.
 #
 #   App comes up at https://epicpickem-staging.fly.dev
@@ -61,6 +61,9 @@ jobs:
             "SESSION_SECRET=${{ secrets.STAGING_SESSION_SECRET }}"
             "CRON_SECRET=${{ secrets.STAGING_CRON_SECRET }}"
           )
+          if [ -n "${{ secrets.GIPHY_API_KEY }}" ]; then
+            args+=("GIPHY_API_KEY=${{ secrets.GIPHY_API_KEY }}")
+          fi
           if [ -n "${{ secrets.TENOR_API_KEY }}" ]; then
             args+=("TENOR_API_KEY=${{ secrets.TENOR_API_KEY }}")
           fi
