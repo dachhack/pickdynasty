@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { getCurrentUser } from "@/lib/auth";
+import { userIsSuperAdmin } from "@/lib/superadmin";
 import { logout } from "@/actions/auth";
 
 export const metadata: Metadata = {
@@ -35,6 +36,11 @@ export default async function RootLayout({
                   <Link href="/dashboard" className="text-slate-300 hover:text-white">
                     My Leagues
                   </Link>
+                  {userIsSuperAdmin(user) && (
+                    <Link href="/admin" className="text-indigo-400 hover:text-indigo-300">
+                      🛡️ HQ
+                    </Link>
+                  )}
                   <span className="hidden text-slate-500 sm:inline">{user.name}</span>
                   <form action={logout}>
                     <button className="btn-ghost !px-3 !py-1.5 !text-xs">Sign out</button>

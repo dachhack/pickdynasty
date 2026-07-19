@@ -21,6 +21,9 @@ model User {
   // Only set by the local dev auth driver; Supabase Auth users have none.
   passwordHash String?
   name         String
+  // Site-wide operator role — see src/lib/superadmin.ts (SUPER_ADMIN_EMAILS
+  // env grants it regardless of this flag).
+  isSuperAdmin Boolean      @default(false)
   createdAt    DateTime     @default(now())
   memberships  Membership[]
   leagues      League[]     @relation("LeagueCreator")
