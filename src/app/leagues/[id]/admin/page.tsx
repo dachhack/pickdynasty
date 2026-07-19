@@ -9,6 +9,8 @@ import {
   updateLeagueSettings,
 } from "@/actions/admin";
 import { linkFantasyLeague, unlinkFantasyLeague } from "@/actions/fantasy";
+import { sendInviteEmails } from "@/actions/emails";
+import { emailEnabled } from "@/lib/email";
 import { FORMATS } from "@/lib/formats";
 import CopyField from "@/components/CopyField";
 
@@ -17,10 +19,18 @@ export default async function AdminPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; fantasyError?: string; fantasyLinked?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    fantasyError?: string;
+    fantasyLinked?: string;
+    invitesSent?: string;
+    invitesFailed?: string;
+    inviteError?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { saved, fantasyError, fantasyLinked } = await searchParams;
+  const { saved, fantasyError, fantasyLinked, invitesSent, invitesFailed, inviteError } =
+    await searchParams;
   const me = await requireCommissioner(id);
   const { league } = me;
 
@@ -59,6 +69,35 @@ export default async function AdminPage({
           <input type="hidden" name="leagueId" value={id} />
           <button className="btn-ghost !text-xs">♻️ Regenerate code (invalidates the old link)</button>
         </form>
+
+        {invitesSent != null && (
+          <p className="mt-3 rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+            📨 Sent {invitesSent} invite{Number(invitesSent) === 1 ? "" : "s"}
+            {Number(invitesFailed) > 0 && ` (${invitesFailed} failed — check the addresses)`}.
+          </p>
+        )}
+        {inviteError && (
+          <p className="mt-3 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+            {inviteError}
+          </p>
+        )}
+        {emailEnabled() ? (
+          <form action={sendInviteEmails} className="mt-4 border-t border-slate-800 pt-4">
+            <input type="hidden" name="leagueId" value={id} />
+            <label className="label" htmlFor="emails">Or email invites directly</label>
+            <textarea
+              className="input min-h-[4.5rem]"
+              id="emails"
+              name="emails"
+              placeholder={"friend1@example.com, friend2@example.com…"}
+            />
+            <button className="btn mt-2 !text-sm">📨 Send invites</button>
+          </form>
+        ) : (
+          <p className="mt-3 text-xs text-slate-600">
+            💡 Email invites light up when a Resend API key is configured (RESEND_API_KEY).
+          </p>
+        )}
       </section>
 
       <section className="card">

@@ -24,6 +24,8 @@ model User {
   // Site-wide operator role — see src/lib/superadmin.ts (SUPER_ADMIN_EMAILS
   // env grants it regardless of this flag).
   isSuperAdmin Boolean      @default(false)
+  // Opted out of reminder/nudge emails (via the unsubscribe link).
+  emailOptOut  Boolean      @default(false)
   createdAt    DateTime     @default(now())
   memberships  Membership[]
   leagues      League[]     @relation("LeagueCreator")
@@ -85,6 +87,7 @@ model Membership {
   reactions Reaction[]
   messages  Message[]
   messageReactions MessageReaction[]
+  reminderLogs ReminderLog[]
 
   @@unique([userId, leagueId])
 }
@@ -102,6 +105,7 @@ model Slate {
   games        Game[]
   tiebreakers  TiebreakerGuess[]
   reactions    Reaction[]
+  reminderLogs ReminderLog[]
   createdAt    DateTime  @default(now())
 }
 
@@ -166,6 +170,19 @@ model MessageReaction {
   membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, membershipId, emoji])
+}
+
+// One automated deadline reminder per member per slate — the cron endpoint
+// checks this before emailing so nobody gets nagged twice.
+model ReminderLog {
+  id           String     @id @default(cuid())
+  slateId      String
+  membershipId String
+  createdAt    DateTime   @default(now())
+  slate        Slate      @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([slateId, membershipId])
 }
 
 // One-tap emoji reactions on a slate's recap (🔥😂💀🎯). Toggled on/off.

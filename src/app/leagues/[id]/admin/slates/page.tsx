@@ -9,6 +9,8 @@ import {
   setResult,
 } from "@/actions/admin";
 import { syncEspnResults } from "@/actions/espn";
+import { nudgeMissingPicks } from "@/actions/emails";
+import { emailEnabled } from "@/lib/email";
 import SlateOrderStrip from "@/components/boards/SlateOrderStrip";
 
 const fmt = new Intl.DateTimeFormat("en-US", {
@@ -26,10 +28,10 @@ export default async function AdminSlatesPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ synced?: string; created?: string }>;
+  searchParams: Promise<{ synced?: string; created?: string; nudged?: string }>;
 }) {
   const { id } = await params;
-  const { synced, created } = await searchParams;
+  const { synced, created, nudged } = await searchParams;
   const me = await requireCommissioner(id);
   const autoScores = espnSupported(me.league.sport);
   const isSurvivor = me.league.format === "survivor";
@@ -53,6 +55,11 @@ export default async function AdminSlatesPage({
       {created && (
         <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
           🚀 Season autopilot created {created} {Number(created) === 1 ? "slate" : "slates"}.
+        </p>
+      )}
+      {nudged != null && (
+        <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+          📨 Nudged {nudged} {Number(nudged) === 1 ? "member" : "members"} to make their picks.
         </p>
       )}
       <div className="flex items-center justify-between">
@@ -139,9 +146,18 @@ export default async function AdminSlatesPage({
             <p className="text-sm text-slate-400">Deadline: {fmt.format(slate.pickDeadline)}</p>
           )}
           {status === "open" && missing.length > 0 && slate.games.length > 0 && (
-            <p className="mt-1 text-xs text-amber-400">
-              ⏰ Still waiting on: {missing.map((m) => `${m.teamEmoji} ${m.teamName}`).join(", ")}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-400">
+              <span>
+                ⏰ Still waiting on: {missing.map((m) => `${m.teamEmoji} ${m.teamName}`).join(", ")}
+              </span>
+              {emailEnabled() && (
+                <form action={nudgeMissingPicks} className="inline">
+                  <input type="hidden" name="leagueId" value={id} />
+                  <input type="hidden" name="slateId" value={slate.id} />
+                  <button className="btn-ghost !px-2 !py-0.5 !text-xs">📨 Nudge them</button>
+                </form>
+              )}
+            </div>
           )}
 
           <div className="mt-4 flex flex-col gap-3">

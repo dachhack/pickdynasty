@@ -18,3 +18,9 @@ jobs:
           curl -fsS --max-time 120 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ vars.APP_URL || 'https://epicpickem.com' }}/api/cron/sync"
+
+      - name: Send deadline reminders
+        run: |
+          curl -fsS --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.APP_URL || 'https://epicpickem.com' }}/api/cron/reminders"
