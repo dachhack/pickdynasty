@@ -35,6 +35,19 @@ jobs:
       APP: epicpickem-staging
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Proves the database credentials BEFORE deploying and applies pending
+      # migrations from CI. If the URLs/password are wrong, this step fails
+      # with the exact Prisma error in plain sight — no Fly-log spelunking.
+      - name: Verify database connection & run migrations
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+        run: npx prisma@6 migrate deploy
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Create app if missing
