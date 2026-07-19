@@ -1,0 +1,63 @@
+# Browser-only staging deploy — no local machine or CLI needed, mirroring the
+# ffgame deploy-workflow pattern. One-time setup (all in the browser):
+#
+#   1. supabase.com → New project → copy BOTH connection strings
+#      (Settings → Database): pooled (port 6543, add ?pgbouncer=true) and
+#      direct (port 5432).
+#   2. fly.io dashboard → Account → Access Tokens → create a token.
+#   3. GitHub repo → Settings → Secrets and variables → Actions → add:
+#        FLY_API_TOKEN          (from step 2)
+#        STAGING_DATABASE_URL   (pooled string from step 1)
+#        STAGING_DIRECT_URL     (direct string from step 1)
+#        STAGING_SESSION_SECRET (any long random string)
+#        STAGING_CRON_SECRET    (any long random string)
+#      Optional: STAGING_SUPABASE_URL + STAGING_SUPABASE_ANON_KEY to enable
+#      Supabase Auth (shared accounts with Drip) — without them staging uses
+#      the built-in email/password auth, which is fine for testing.
+#      Optional: TENOR_API_KEY to light up GIF search in chat.
+#   4. Actions tab → "Deploy staging (Fly)" → Run workflow.
+#
+#   App comes up at https://epicpickem-staging.fly.dev
+name: Deploy staging (Fly)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      APP: epicpickem-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create app if missing
+        run: flyctl apps create "$APP" || true
+
+      - name: Set runtime secrets
+        run: |
+          args=(
+            "DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}"
+            "DIRECT_URL=${{ secrets.STAGING_DIRECT_URL }}"
+            "SESSION_SECRET=${{ secrets.STAGING_SESSION_SECRET }}"
+            "CRON_SECRET=${{ secrets.STAGING_CRON_SECRET }}"
+          )
+          if [ -n "${{ secrets.TENOR_API_KEY }}" ]; then
+            args+=("TENOR_API_KEY=${{ secrets.TENOR_API_KEY }}")
+          fi
+          flyctl secrets set --app "$APP" --stage "${args[@]}"
+
+      - name: Deploy
+        run: |
+          flyctl deploy --app "$APP" --remote-only \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.STAGING_SUPABASE_URL }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.STAGING_SUPABASE_ANON_KEY }}"
+
+      - name: Show URL
+        run: echo "🌐 https://$APP.fly.dev"

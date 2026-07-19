@@ -44,11 +44,20 @@ products:
    - Secret `CRON_SECRET` — same value as the Fly secret
    - Variable `APP_URL` — `https://epicpickem.com` (defaults to that if unset)
 
-## QA / staging
+## QA / staging — no local machine needed
 
-Mirror Drip's staging pattern (`ffgame-staging`): a second Fly app
-(`epicpickem-staging`) deployed from a staging branch, pointed at a separate
-Supabase project (or schema) so test leagues never touch prod data.
+**The browser-only path** (this is the GitHub-Pages-style workflow for a
+server app): `.github/workflows/deploy-staging.yml` deploys to a Fly app from
+the Actions tab. One-time setup is entirely in the browser — create a Supabase
+project, grab a Fly API token, paste five secrets into GitHub repo settings,
+then run the workflow. Full steps are in the workflow file's header comment.
+The app comes up at `https://epicpickem-staging.fly.dev`.
+
+Without the optional `STAGING_SUPABASE_URL`/`ANON_KEY` secrets, staging uses
+the built-in email/password auth — fine for testing; add them later to switch
+to shared Supabase accounts.
+
+CLI alternative:
 
 ```bash
 fly apps create epicpickem-staging
