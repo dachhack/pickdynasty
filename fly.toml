@@ -1,10 +1,14 @@
-# Fly config for Epic Pick'em (epicpickem.com). Deploy from the repo root:
-#   fly deploy
+# Fly config for Epic Pick'em (epicpickem.com).
+#
+# NOTE: no `app =` line on purpose — the app name is always passed on the
+# command line (`fly deploy --app epicpickem` for prod, `--app
+# epicpickem-staging` for staging / the GitHub Actions workflow). A hardcoded
+# name that mismatches --app makes flyctl drop this config, deploying
+# machines with NO http service — the proxy then 502s ("not finding
+# machines to route requests").
+#
 # Secrets first (see DEPLOYMENT.md):
 #   fly secrets set DATABASE_URL=... DIRECT_URL=... SESSION_SECRET=... CRON_SECRET=...
-# QA mirrors Drip's staging pattern: a second app (epicpickem-staging) deployed
-# from the staging branch, pointed at a separate Supabase project/schema.
-app = "epicpickem"
 primary_region = "iad"
 
 [build]
