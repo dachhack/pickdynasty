@@ -10,7 +10,7 @@ import {
 } from "@/lib/espn";
 import { fetchFantasyMatchups, type FantasyMatchup } from "@/lib/fantasy";
 import { SPORTS, sportLabel } from "@/lib/sports";
-import { createFantasySlate, createManualSlate, createSeasonSlates } from "@/actions/wizard";
+import { createBuilderSlate, createFantasySlate, createManualSlate, createSeasonSlates } from "@/actions/wizard";
 import SlateBuilder from "@/components/SlateBuilder";
 
 const timeFmt = new Intl.DateTimeFormat("en-US", {
@@ -209,6 +209,7 @@ export default async function NewSlatePage({
         </p>
       </div>
       <SlateBuilder
+        action={createBuilderSlate.bind(null, id)}
         leagueId={id}
         leagueSport={builderDefaultSport}
         leagueSeason={league.season}

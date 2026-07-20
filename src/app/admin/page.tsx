@@ -9,6 +9,7 @@ import {
   adminGlobalSync,
   toggleSuperAdmin,
 } from "@/actions/superadmin";
+import { createPickPack, deletePickPack, togglePackPublished } from "@/actions/packs";
 import ConfirmButton from "@/components/ConfirmButton";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,10 @@ export default async function SuperAdminPage({
   const me = await requireSuperAdmin();
   const { synced, checked, error } = await searchParams;
 
+  const packs = await db.pickPack.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { _count: { select: { games: true } } },
+  });
   const [users, leagues, counts] = await Promise.all([
     db.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -80,6 +85,54 @@ export default async function SuperAdminPage({
           </div>
         ))}
       </div>
+
+      <section className="card">
+        <h2 className="font-bold">🎁 Pick packs</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Curated game bundles every commissioner sees in the slate builder. Rule-based packs
+          (city teams, women&rsquo;s sports) maintain themselves; these are your hand-picked ones.
+        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          {packs.map((p) => (
+            <div key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-800 px-3 py-2 text-sm">
+              <span className="font-semibold">{p.emoji} {p.title}</span>
+              <span className="text-xs text-slate-500">{p._count.games} games</span>
+              {p.published ? (
+                <span className="rounded-full bg-emerald-950 px-2 py-0.5 text-xs text-emerald-300">Published</span>
+              ) : (
+                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">Draft</span>
+              )}
+              <span className="ml-auto flex gap-2">
+                <Link href={`/admin/packs/${p.id}`} className="btn-ghost !px-2 !py-1 !text-xs">Edit games</Link>
+                <form action={togglePackPublished} className="inline">
+                  <input type="hidden" name="packId" value={p.id} />
+                  <button className="btn-ghost !px-2 !py-1 !text-xs">{p.published ? "Unpublish" : "Publish"}</button>
+                </form>
+                <form action={deletePickPack} className="inline">
+                  <input type="hidden" name="packId" value={p.id} />
+                  <ConfirmButton message={`Delete pack "${p.title}"?`}>✕</ConfirmButton>
+                </form>
+              </span>
+            </div>
+          ))}
+          {packs.length === 0 && <p className="text-sm text-slate-500">No curated packs yet.</p>}
+        </div>
+        <form action={createPickPack} className="mt-4 grid gap-3 border-t border-slate-800 pt-4 sm:grid-cols-4">
+          <div>
+            <label className="label">Emoji</label>
+            <input className="input text-center" name="emoji" defaultValue="🎁" maxLength={4} />
+          </div>
+          <div className="sm:col-span-3">
+            <label className="label">Title</label>
+            <input className="input" name="title" required placeholder="Top Games of September" />
+          </div>
+          <div className="sm:col-span-4">
+            <label className="label">Description</label>
+            <input className="input" name="description" placeholder="The month's cant-miss matchups across every sport" />
+          </div>
+          <button className="btn sm:col-span-4 sm:justify-self-start">Create pack → pick the games</button>
+        </form>
+      </section>
 
       <section className="card overflow-x-auto !p-0">
         <h2 className="px-5 pt-5 font-bold">Leagues</h2>

@@ -13,12 +13,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { createBuilderSlate, type BuilderGame } from "@/actions/wizard";
+import type { BuilderGame } from "@/actions/wizard";
 import { tapHaptic } from "@/components/boards/celebrate";
 
 type SportInfo = { id: string; label: string; emoji: string };
 type Team = { id: string; name: string; abbrev: string };
 type PoolGame = BuilderGame & { completed: boolean };
+type PackInfo = { id: string; title: string; emoji: string; description: string };
+export type BuilderSaveResult = { ok: true; redirectTo: string } | { ok: false; error: string };
 
 const timeFmt = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -43,18 +45,28 @@ export default function SlateBuilder({
   sports,
   weeklyMax,
   todayISO,
+  action,
+  saveLabel = "Create slate",
+  initialSlate = [],
+  initialName = "",
 }: {
-  leagueId: string;
+  leagueId: string; // league id, or "hq" for the pack editor
   leagueSport: string;
   leagueSeason: string;
   sports: SportInfo[];
   weeklyMax: Record<string, number>;
   todayISO: string; // YYYY-MM-DD in ET
+  action: (input: { name: string; games: BuilderGame[] }) => Promise<BuilderSaveResult>;
+  saveLabel?: string;
+  initialSlate?: PoolGame[];
+  initialName?: string;
 }) {
   const router = useRouter();
   const [sport, setSport] = useState(leagueSport);
   const weekly = sport in weeklyMax;
-  const [mode, setMode] = useState<"week" | "day" | "team">(weekly ? "week" : "day");
+  const [mode, setMode] = useState<"packs" | "week" | "day" | "team">(weekly ? "week" : "day");
+  const [packs, setPacks] = useState<PackInfo[]>([]);
+  const [packId, setPackId] = useState("");
   const [season, setSeason] = useState(leagueSeason);
   const [week, setWeek] = useState(1);
   const [date, setDate] = useState(todayISO);
@@ -63,9 +75,9 @@ export default function SlateBuilder({
   const [pool, setPool] = useState<PoolGame[]>([]);
   const [loading, setLoading] = useState(false);
   const [poolError, setPoolError] = useState("");
-  const [slate, setSlate] = useState<PoolGame[]>([]);
-  const [name, setName] = useState("");
-  const nameTouched = useRef(false);
+  const [slate, setSlate] = useState<PoolGame[]>(initialSlate);
+  const [name, setName] = useState(initialName);
+  const nameTouched = useRef(Boolean(initialName));
   const [dragging, setDragging] = useState<PoolGame | null>(null);
   const [saveError, setSaveError] = useState("");
   const [saving, startSave] = useTransition();
@@ -91,6 +103,8 @@ export default function SlateBuilder({
       else if (mode === "day") url = `/api/leagues/${leagueId}/espn?mode=day&sport=${sport}&date=${date.replaceAll("-", "")}`;
       else if (mode === "team" && teamId)
         url = `/api/leagues/${leagueId}/espn?mode=team&sport=${sport}&team=${teamId}&season=${season}`;
+      else if (mode === "packs" && packId)
+        url = `/api/leagues/${leagueId}/espn?mode=pack&pack=${encodeURIComponent(packId)}&season=${season}`;
       if (!url) {
         setPool([]);
         setLoading(false);
@@ -102,27 +116,43 @@ export default function SlateBuilder({
       setPool(data.games ?? []);
       // Suggest a slate name from the first query if the commish hasn't typed one.
       if (!nameTouched.current && (data.games ?? []).length > 0) {
-        const sportPrefix = sport === leagueSport ? "" : `${sports.find((s) => s.id === sport)?.label ?? sport} · `;
+        const sportPrefix = mode === "packs" || sport === leagueSport ? "" : `${sports.find((s) => s.id === sport)?.label ?? sport} · `;
         const label =
-          mode === "week"
-            ? `Week ${week}`
-            : mode === "day"
-              ? timeFmt.format(new Date(`${date}T12:00:00-05:00`)).split(",").slice(0, 2).join(",")
-              : `${teams.find((t) => t.id === teamId)?.name ?? "Team"} schedule`;
+          mode === "packs"
+            ? packs.find((pk) => pk.id === packId)?.title ?? "Pick pack"
+            : mode === "week"
+              ? `Week ${week}`
+              : mode === "day"
+                ? timeFmt.format(new Date(`${date}T12:00:00-05:00`)).split(",").slice(0, 2).join(",")
+                : `${teams.find((t) => t.id === teamId)?.name ?? "Team"} schedule`;
         setName(`${sportPrefix}${label}`);
       }
     } catch {
       setPoolError("Couldn't load the schedule — try again.");
     }
     setLoading(false);
-  }, [leagueId, mode, sport, season, week, date, teamId, leagueSport, sports, teams]);
+  }, [leagueId, mode, sport, season, week, date, teamId, packId, packs, leagueSport, sports, teams]);
 
   // Debounced so season typing / rapid tab-switching doesn't storm ESPN.
   useEffect(() => {
     const t = setTimeout(query, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, sport, season, week, date, teamId]);
+  }, [mode, sport, season, week, date, teamId, packId]);
+
+  // Lazy-load the pack list when entering packs mode.
+  useEffect(() => {
+    if (mode !== "packs" || packs.length > 0) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/leagues/${leagueId}/espn?mode=packs`);
+        const data = await res.json();
+        setPacks(data.packs ?? []);
+      } catch {
+        setPoolError("Couldn't load packs.");
+      }
+    })();
+  }, [mode, packs.length, leagueId]);
 
   // Lazy-load the team list when entering team mode.
   useEffect(() => {
@@ -137,6 +167,15 @@ export default function SlateBuilder({
       }
     })();
   }, [mode, sport, teams.length, leagueId]);
+
+  function addAll() {
+    tapHaptic();
+    setSlate((prev) => {
+      const have = new Set(prev.map(keyOf));
+      const fresh = pool.filter((g) => !have.has(keyOf(g)));
+      return [...prev, ...fresh].slice(0, 64);
+    });
+  }
 
   function add(g: PoolGame) {
     if (chosen.has(keyOf(g))) return;
@@ -163,8 +202,8 @@ export default function SlateBuilder({
   function create() {
     setSaveError("");
     startSave(async () => {
-      const result = await createBuilderSlate({ leagueId, name, games: slate });
-      if (result.ok) router.push(`/leagues/${leagueId}/admin/slates`);
+      const result = await action({ name, games: slate });
+      if (result.ok) router.push(result.redirectTo);
       else setSaveError(result.error);
     });
   }
@@ -195,7 +234,7 @@ export default function SlateBuilder({
 
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <div className="flex rounded-lg border border-slate-700 p-0.5 text-xs font-semibold">
-              {(weekly ? (["week", "day", "team"] as const) : (["day", "team"] as const)).map((m) => (
+              {(weekly ? (["week", "day", "team", "packs"] as const) : (["day", "team", "packs"] as const)).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -204,7 +243,7 @@ export default function SlateBuilder({
                     mode === m ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  By {m}
+                  {m === "packs" ? "🎁 Packs" : `By ${m}`}
                 </button>
               ))}
             </div>
@@ -237,12 +276,45 @@ export default function SlateBuilder({
             )}
           </div>
 
+          {mode === "packs" && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {packs.length === 0 && <p className="text-sm text-slate-500">Loading packs…</p>}
+              {packs.map((pk) => (
+                <button
+                  key={pk.id}
+                  type="button"
+                  onClick={() => setPackId(pk.id)}
+                  title={pk.description}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                    packId === pk.id
+                      ? "border-indigo-500 bg-indigo-950/50 text-white"
+                      : "border-slate-700 text-slate-300 hover:border-slate-500"
+                  }`}
+                >
+                  {pk.emoji} {pk.title}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {pool.length > 0 && !loading && (
+            <div className="mt-2 flex justify-end">
+              <button type="button" onClick={addAll} className="btn-ghost !px-2.5 !py-1 !text-xs">
+                ⬇️ Add all {pool.length}
+              </button>
+            </div>
+          )}
+
           <div className="mt-3 flex max-h-[24rem] flex-col gap-1.5 overflow-y-auto pr-1">
             {loading && <p className="py-6 text-center text-sm text-slate-500">Loading…</p>}
             {!loading && poolError && <p className="py-4 text-center text-sm text-red-400">{poolError}</p>}
             {!loading && !poolError && pool.length === 0 && (
               <p className="py-6 text-center text-sm text-slate-500">
-                {mode === "team" && !teamId ? "Pick a team to see its schedule." : "No games found."}
+                {mode === "team" && !teamId
+                  ? "Pick a team to see its schedule."
+                  : mode === "packs" && !packId
+                    ? "Pick a pack — curated bundles you can add in one tap."
+                    : "No games found."}
               </p>
             )}
             {!loading &&
@@ -268,6 +340,7 @@ export default function SlateBuilder({
           saving={saving}
           saveError={saveError}
           emojiOf={(g) => sportMeta(g.sport)?.emoji ?? "🏆"}
+          saveLabel={saveLabel}
         />
       </div>
 
@@ -345,6 +418,7 @@ function SlateTray({
   saving,
   saveError,
   emojiOf,
+  saveLabel,
 }: {
   slate: PoolGame[];
   onRemove: (key: string) => void;
@@ -354,6 +428,7 @@ function SlateTray({
   saving: boolean;
   saveError: string;
   emojiOf: (g: PoolGame) => string;
+  saveLabel: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: "slate-drop" });
   return (
@@ -399,7 +474,7 @@ function SlateTray({
           />
         </div>
         <button type="button" onClick={onCreate} disabled={saving || slate.length === 0} className="btn">
-          {saving ? "Creating…" : `Create slate · ${slate.length} game${slate.length === 1 ? "" : "s"}`}
+          {saving ? "Saving…" : `${saveLabel} · ${slate.length} game${slate.length === 1 ? "" : "s"}`}
         </button>
       </div>
       {saveError && <p className="mt-2 text-sm text-red-400">{saveError}</p>}

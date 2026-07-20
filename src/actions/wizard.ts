@@ -75,12 +75,11 @@ export type BuilderGame = {
  * the client, which is commissioner-equivalent trust (commissioners can
  * already hand-enter arbitrary games) — everything is still sanitized.
  */
-export async function createBuilderSlate(input: {
-  leagueId: string;
-  name: string;
-  games: BuilderGame[];
-}): Promise<{ ok: true; slateId: string } | { ok: false; error: string }> {
-  const me = await requireCommissioner(input.leagueId);
+export async function createBuilderSlate(
+  leagueId: string,
+  input: { name: string; games: BuilderGame[] }
+): Promise<{ ok: true; redirectTo: string } | { ok: false; error: string }> {
+  const me = await requireCommissioner(leagueId);
   const name = String(input.name ?? "").trim().slice(0, 60);
   if (!name) return { ok: false, error: "Give the slate a name." };
   if (!Array.isArray(input.games) || input.games.length === 0) {
@@ -112,16 +111,16 @@ export async function createBuilderSlate(input: {
   }
   if (rows.length === 0) return { ok: false, error: "No valid games in the selection." };
 
-  const slate = await db.slate.create({
+  await db.slate.create({
     data: {
-      leagueId: input.leagueId,
+      leagueId,
       name,
-      order: await nextSlateOrder(input.leagueId),
+      order: await nextSlateOrder(leagueId),
       games: { create: rows },
     },
   });
-  revalidatePath(`/leagues/${input.leagueId}`, "layout");
-  return { ok: true, slateId: slate.id };
+  revalidatePath(`/leagues/${leagueId}`, "layout");
+  return { ok: true, redirectTo: `/leagues/${leagueId}/admin/slates` };
 }
 
 /** Season autopilot: one slate per remaining week, all games included. */

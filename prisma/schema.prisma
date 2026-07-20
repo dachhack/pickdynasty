@@ -176,6 +176,33 @@ model MessageReaction {
   @@unique([messageId, membershipId, emoji])
 }
 
+// Hand-curated pick packs, built by super admins in HQ and published
+// platform-wide as one-tap game bundles in the slate builder.
+model PickPack {
+  id          String         @id @default(cuid())
+  title       String
+  emoji       String         @default("🎁")
+  description String         @default("")
+  published   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  games       PickPackGame[]
+}
+
+model PickPackGame {
+  id         String   @id @default(cuid())
+  packId     String
+  sport      String
+  externalId String?
+  homeTeam   String
+  awayTeam   String
+  startTime  DateTime
+  winner     String?
+  homeScore  Int?
+  awayScore  Int?
+  spread     Float?
+  pack       PickPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+}
+
 // One automated deadline reminder per member per slate — the cron endpoint
 // checks this before emailing so nobody gets nagged twice.
 model ReminderLog {

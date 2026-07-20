@@ -10,12 +10,15 @@ const ESPN_PATHS: Record<string, EspnPathConfig> = {
   nfl: { path: "football/nfl" },
   cfb: { path: "football/college-football", groups: "80" },
   nba: { path: "basketball/nba" },
+  wnba: { path: "basketball/wnba" },
   cbb: { path: "basketball/mens-college-basketball", groups: "50" },
   "march-madness": { path: "basketball/mens-college-basketball", groups: "50" },
+  wcbb: { path: "basketball/womens-college-basketball", groups: "50" },
   mlb: { path: "baseball/mlb" },
   cws: { path: "baseball/college-baseball" },
   nhl: { path: "hockey/nhl" },
   mls: { path: "soccer/usa.1" },
+  nwsl: { path: "soccer/usa.nwsl" },
 };
 
 export function espnSupported(sport: string): boolean {
@@ -156,8 +159,19 @@ export async function fetchWeekScoreboard(
 
 export type EspnTeam = { id: string; name: string; abbrev: string };
 
-/** All teams in a sport (for the slate builder's by-team mode). */
+const teamsCache = new Map<string, { at: number; teams: EspnTeam[] }>();
+const TEAMS_TTL_MS = 60 * 60_000; // rosters of teams change ~never intra-day
+
+/** All teams in a sport (builder's by-team mode + city pick packs). */
 export async function fetchTeams(sport: string): Promise<EspnTeam[]> {
+  const cached = teamsCache.get(sport);
+  if (cached && Date.now() - cached.at < TEAMS_TTL_MS) return cached.teams;
+  const teams = await fetchTeamsUncached(sport);
+  if (teams.length > 0) teamsCache.set(sport, { at: Date.now(), teams });
+  return teams;
+}
+
+async function fetchTeamsUncached(sport: string): Promise<EspnTeam[]> {
   const cfg = ESPN_PATHS[sport];
   if (!cfg) return [];
   const data: any = await fetchWithRetry(
