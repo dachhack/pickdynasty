@@ -154,6 +154,68 @@ export async function fetchWeekScoreboard(
   return espnScoreboard(sport, `dates=${season}&seasontype=2&week=${week}`);
 }
 
+export type EspnTeam = { id: string; name: string; abbrev: string };
+
+/** All teams in a sport (for the slate builder's by-team mode). */
+export async function fetchTeams(sport: string): Promise<EspnTeam[]> {
+  const cfg = ESPN_PATHS[sport];
+  if (!cfg) return [];
+  const data: any = await fetchWithRetry(
+    `https://site.api.espn.com/apis/site/v2/sports/${cfg.path}/teams?limit=500`
+  );
+  const teams = data?.sports?.[0]?.leagues?.[0]?.teams ?? [];
+  return teams
+    .map((t: any) => ({
+      id: String(t.team?.id ?? ""),
+      name: t.team?.displayName ?? "",
+      abbrev: t.team?.abbreviation ?? "",
+    }))
+    .filter((t: EspnTeam) => t.id && t.name)
+    .sort((a: EspnTeam, b: EspnTeam) => a.name.localeCompare(b.name));
+}
+
+/** A team's full-season schedule, normalized to EspnGame. */
+export async function fetchTeamSchedule(
+  sport: string,
+  teamId: string,
+  season: string
+): Promise<EspnGame[]> {
+  const cfg = ESPN_PATHS[sport];
+  if (!cfg || !/^\d+$/.test(teamId)) return [];
+  const data: any = await fetchWithRetry(
+    `https://site.api.espn.com/apis/site/v2/sports/${cfg.path}/teams/${teamId}/schedule?season=${season}`
+  );
+  const games: EspnGame[] = [];
+  for (const event of data?.events ?? []) {
+    const comp = event.competitions?.[0];
+    const home = comp?.competitors?.find((c: any) => c.homeAway === "home");
+    const away = comp?.competitors?.find((c: any) => c.homeAway === "away");
+    if (!home || !away) continue;
+    const completed = Boolean(comp.status?.type?.completed);
+    // Schedule endpoint nests scores as objects: {value, displayValue}.
+    const hs = home.score?.value != null ? Number(home.score.value) : NaN;
+    const as = away.score?.value != null ? Number(away.score.value) : NaN;
+    let winner: EspnGame["winner"] = null;
+    if (completed && !isNaN(hs) && !isNaN(as)) {
+      winner = hs > as ? "HOME" : as > hs ? "AWAY" : "TIE";
+    }
+    games.push({
+      externalId: String(event.id),
+      homeTeam: home.team?.displayName ?? "Home",
+      awayTeam: away.team?.displayName ?? "Away",
+      startTime: new Date(event.date),
+      completed,
+      started: completed,
+      winner,
+      homeScore: completed && !isNaN(hs) ? hs : null,
+      awayScore: completed && !isNaN(as) ? as : null,
+      spread: null,
+    });
+  }
+  games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  return games;
+}
+
 /** ESPN's notion of the current week for a weekly sport, or null off-season. */
 export async function fetchCurrentWeek(sport: string): Promise<number | null> {
   const cfg = ESPN_PATHS[sport];

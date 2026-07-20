@@ -6,7 +6,6 @@ import { db } from "@/lib/db";
 import { requireCommissioner } from "@/lib/league";
 import {
   espnSupported,
-  fetchScoreboard,
   fetchWeekScoreboard,
   WEEKLY_SPORTS,
   type EspnGame,
@@ -59,30 +58,70 @@ export async function createManualSlate(formData: FormData) {
   redirect(`/leagues/${leagueId}/admin/slates`);
 }
 
-/** Creates a slate from an ESPN schedule query — a week or a date range. */
-export async function createScheduleSlate(formData: FormData) {
-  const leagueId = String(formData.get("leagueId") ?? "");
-  const me = await requireCommissioner(leagueId);
-  const name = String(formData.get("name") ?? "").trim();
-  const week = Number(formData.get("week") ?? 0);
-  const dates = String(formData.get("dates") ?? "");
-  // Mixed-sport leagues: games may be imported from any ESPN-covered sport.
-  const sportRaw = String(formData.get("sport") ?? "");
-  const sport = espnSupported(sportRaw) ? sportRaw : me.league.sport;
-  const selected = new Set(formData.getAll("selected").map(String));
-  if (!name || selected.size === 0) return;
+export type BuilderGame = {
+  sport: string | null;
+  externalId: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  startTime: string; // ISO
+  winner: "HOME" | "AWAY" | "TIE" | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  spread: number | null;
+};
 
-  const all = week
-    ? await fetchWeekScoreboard(sport, me.league.season, week)
-    : /^\d{8}(-\d{8})?$/.test(dates)
-      ? await fetchScoreboard(sport, dates)
-      : [];
-  const games = all.filter((g) => selected.has(g.externalId));
-  if (games.length === 0) return;
+/**
+ * Creates a slate from the drag-and-drop builder. Game payloads come from
+ * the client, which is commissioner-equivalent trust (commissioners can
+ * already hand-enter arbitrary games) — everything is still sanitized.
+ */
+export async function createBuilderSlate(input: {
+  leagueId: string;
+  name: string;
+  games: BuilderGame[];
+}): Promise<{ ok: true; slateId: string } | { ok: false; error: string }> {
+  const me = await requireCommissioner(input.leagueId);
+  const name = String(input.name ?? "").trim().slice(0, 60);
+  if (!name) return { ok: false, error: "Give the slate a name." };
+  if (!Array.isArray(input.games) || input.games.length === 0) {
+    return { ok: false, error: "Add at least one game." };
+  }
+  if (input.games.length > 64) return { ok: false, error: "64 games max per slate." };
 
-  await createSlateWithGames(leagueId, name, games, null, sport === me.league.sport ? null : sport);
-  revalidatePath(`/leagues/${leagueId}`, "layout");
-  redirect(`/leagues/${leagueId}/admin/slates`);
+  const seen = new Set<string>();
+  const rows = [];
+  for (const g of input.games) {
+    const startTime = new Date(g.startTime);
+    if (isNaN(startTime.getTime())) continue;
+    const sport = g.sport && espnSupported(g.sport) && g.sport !== me.league.sport ? g.sport : null;
+    const externalId = g.externalId ? String(g.externalId).slice(0, 40) : null;
+    const key = `${sport}:${externalId ?? Math.random()}`;
+    if (externalId && seen.has(key)) continue;
+    seen.add(key);
+    rows.push({
+      sport,
+      externalId,
+      homeTeam: String(g.homeTeam ?? "").slice(0, 60) || "Home",
+      awayTeam: String(g.awayTeam ?? "").slice(0, 60) || "Away",
+      startTime,
+      winner: g.winner === "HOME" || g.winner === "AWAY" || g.winner === "TIE" ? g.winner : null,
+      homeScore: Number.isFinite(g.homeScore) ? Math.round(g.homeScore!) : null,
+      awayScore: Number.isFinite(g.awayScore) ? Math.round(g.awayScore!) : null,
+      spread: Number.isFinite(g.spread) ? g.spread : null,
+    });
+  }
+  if (rows.length === 0) return { ok: false, error: "No valid games in the selection." };
+
+  const slate = await db.slate.create({
+    data: {
+      leagueId: input.leagueId,
+      name,
+      order: await nextSlateOrder(input.leagueId),
+      games: { create: rows },
+    },
+  });
+  revalidatePath(`/leagues/${input.leagueId}`, "layout");
+  return { ok: true, slateId: slate.id };
 }
 
 /** Season autopilot: one slate per remaining week, all games included. */
