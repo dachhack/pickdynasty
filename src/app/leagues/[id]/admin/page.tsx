@@ -6,8 +6,11 @@ import {
   regenerateInviteCode,
   removeMember,
   toggleRole,
+  updateEventSettings,
   updateLeagueSettings,
 } from "@/actions/admin";
+import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
+import LocationField from "@/components/LocationField";
 import { linkFantasyLeague, unlinkFantasyLeague } from "@/actions/fantasy";
 import { sendInviteEmails } from "@/actions/emails";
 import { emailEnabled } from "@/lib/email";
@@ -21,6 +24,7 @@ export default async function AdminPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{
     saved?: string;
+    eventError?: string;
     fantasyError?: string;
     fantasyLinked?: string;
     invitesSent?: string;
@@ -29,7 +33,7 @@ export default async function AdminPage({
   }>;
 }) {
   const { id } = await params;
-  const { saved, fantasyError, fantasyLinked, invitesSent, invitesFailed, inviteError } =
+  const { saved, eventError, fantasyError, fantasyLinked, invitesSent, invitesFailed, inviteError } =
     await searchParams;
   const me = await requireCommissioner(id);
   const { league } = me;
@@ -97,6 +101,89 @@ export default async function AdminPage({
           <p className="mt-3 text-xs text-slate-600">
             💡 Email invites light up when email sending is configured (SMTP_USER/SMTP_PASS or RESEND_API_KEY).
           </p>
+        )}
+      </section>
+
+      <section className="card">
+        <h2 className="font-bold">🍻 Event night mode</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Running this at a bar or watch party? Guest quick-join lets walk-ins scan a QR
+          code and play with just a display name — no account — and unlocks a big-screen
+          leaderboard for the TV.
+        </p>
+        {eventError === "no-venue" && (
+          <p className="mt-3 rounded-lg border border-amber-900 bg-amber-950/50 px-4 py-2 text-sm text-amber-300">
+            Location check needs a venue point — tap &ldquo;Set venue to my current
+            location&rdquo; (from your phone, standing at the venue) and save again.
+          </p>
+        )}
+        <form action={updateEventSettings} className="mt-4 flex flex-col gap-4">
+          <input type="hidden" name="leagueId" value={id} />
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              name="allowGuests"
+              defaultChecked={league.allowGuests}
+              className="h-4 w-4 accent-indigo-500"
+            />
+            Guest quick-join — anyone with the QR/link plays with just a display name
+          </label>
+          <div className="flex flex-col gap-3 rounded-lg border border-slate-800 p-3">
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                name="requireLocation"
+                defaultChecked={league.requireLocation}
+                className="h-4 w-4 accent-indigo-500"
+              />
+              📍 Venue-only entry — joiners must share a location near the venue
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <LocationField
+                  latName="venueLat"
+                  lngName="venueLng"
+                  label="📍 Set venue to my current location"
+                  showCoords
+                />
+                {league.venueLat != null && league.venueLng != null && (
+                  <p className="mt-1 font-mono text-xs text-slate-500">
+                    saved: {league.venueLat.toFixed(5)}, {league.venueLng.toFixed(5)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="label" htmlFor="venueRadiusM">Radius</label>
+                <select
+                  className="input"
+                  id="venueRadiusM"
+                  name="venueRadiusM"
+                  defaultValue={league.venueRadiusM}
+                >
+                  {VENUE_RADIUS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">
+              A deterrent for couch players, not a guarantee — browser location can be
+              spoofed. Members who already joined aren&rsquo;t re-checked.
+            </p>
+          </div>
+          <button className="btn self-start">Save event settings</button>
+        </form>
+        {league.allowGuests && (
+          <div className="mt-4 border-t border-slate-800 pt-4">
+            <p className="text-sm font-semibold">📺 TV leaderboard</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Open this on the bar&rsquo;s TV — public, read-only, auto-refreshing, with the
+              join QR on screen.
+            </p>
+            <div className="mt-2">
+              <CopyField value={`${proto}://${host}/tv/${league.inviteCode}`} />
+            </div>
+          </div>
         )}
       </section>
 
@@ -231,7 +318,7 @@ export default async function AdminPage({
                     {m.teamEmoji} {m.teamName}
                   </span>
                   <span className="ml-2 text-xs text-slate-500">
-                    {m.user.name} · {m.user.email}
+                    {m.user.name} · {m.user.isGuest ? "🎟️ guest" : m.user.email}
                   </span>
                 </td>
                 <td className="px-3 py-3 text-right">

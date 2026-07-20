@@ -8,11 +8,11 @@ import { joinLeague } from "@/actions/leagues";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; claimed?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const { error } = await searchParams;
+  const { error, claimed } = await searchParams;
 
   const memberships = await db.membership.findMany({
     where: { userId: user.id },
@@ -27,6 +27,18 @@ export default async function DashboardPage({
         <Link href="/leagues/new" className="btn">+ New league</Link>
       </div>
 
+      {claimed && (
+        <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+          🎉 Account claimed — your picks and leagues are yours on any device now.
+        </p>
+      )}
+      {user.isGuest && (
+        <p className="rounded-lg border border-indigo-900 bg-indigo-950/50 px-4 py-2 text-sm text-indigo-300">
+          🎟️ You&rsquo;re playing as a guest on this device.{" "}
+          <Link href="/claim" className="font-semibold underline">Claim your free account</Link>{" "}
+          to keep your picks.
+        </p>
+      )}
       {error === "bad-code" && (
         <p className="rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
           That invite code didn&rsquo;t match any league. Double-check it and try again.

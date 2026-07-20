@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { makeInviteCode, requireMembership } from "@/lib/league";
+import { venueCheckError } from "@/lib/geo";
 import { SPORTS } from "@/lib/sports";
 import { FORMATS } from "@/lib/formats";
 
@@ -49,6 +50,21 @@ export async function joinLeague(formData: FormData) {
 
   const league = await db.league.findUnique({ where: { inviteCode: code } });
   if (!league) redirect("/dashboard?error=bad-code");
+
+  // Venue geofence (event-night leagues): already-joined members skip it.
+  const member = await db.membership.findUnique({
+    where: { userId_leagueId: { userId: user.id, leagueId: league.id } },
+  });
+  if (!member) {
+    const num = (k: string) => {
+      const raw = String(formData.get(k) ?? "").trim();
+      return raw && Number.isFinite(Number(raw)) ? Number(raw) : null;
+    };
+    if (venueCheckError(league, num("lat"), num("lng"))) {
+      // The join page renders the location prompt + distance feedback.
+      redirect(`/join/${code}?loc=1`);
+    }
+  }
 
   const teamName = String(formData.get("teamName") ?? "").trim() || `${user.name}'s Team`;
   await db.membership.upsert({

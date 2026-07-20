@@ -26,9 +26,17 @@ model User {
   isSuperAdmin Boolean      @default(false)
   // Opted out of reminder/nudge emails (via the unsubscribe link).
   emailOptOut  Boolean      @default(false)
+  // Bar/event-night guest: created by guest quick-join with a synthetic
+  // email and no password; always emailOptOut. Claimable into a full account.
+  isGuest      Boolean      @default(false)
+  // Email a guest claimed with under the Supabase driver — memberships
+  // transfer to that email's account the first time it signs in.
+  claimEmail   String?
   createdAt    DateTime     @default(now())
   memberships  Membership[]
   leagues      League[]     @relation("LeagueCreator")
+
+  @@index([claimEmail])
 }
 
 model League {
@@ -45,6 +53,16 @@ model League {
   adminCanSeePicks Boolean @default(false)
   buyIn       Float        @default(0)
   currency    String       @default("USD")
+  // 🍻 Event night mode: guest quick-join (QR → display name → picking)
+  // plus the public /tv/<inviteCode> big-screen leaderboard.
+  allowGuests Boolean      @default(false)
+  // Optional geofence: joiners must share a browser location within
+  // venueRadiusM of (venueLat, venueLng). A deterrent, not proof —
+  // browser geolocation is client-reported and spoofable.
+  requireLocation Boolean  @default(false)
+  venueLat    Float?
+  venueLng    Float?
+  venueRadiusM Int         @default(150)
   createdById String
   createdBy   User         @relation("LeagueCreator", fields: [createdById], references: [id])
   createdAt   DateTime     @default(now())

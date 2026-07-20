@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { makeInviteCode, requireCommissioner } from "@/lib/league";
+import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
 
 export async function updateLeagueSettings(formData: FormData) {
   const leagueId = String(formData.get("leagueId") ?? "");
@@ -23,6 +24,51 @@ export async function updateLeagueSettings(formData: FormData) {
       buyIn,
       blindPicks: formData.get("blindPicks") === "on",
       adminCanSeePicks: formData.get("adminCanSeePicks") === "on",
+    },
+  });
+  revalidatePath(`/leagues/${leagueId}`, "layout");
+  redirect(`/leagues/${leagueId}/admin?saved=1`);
+}
+
+/** 🍻 Event night mode: guest quick-join, TV leaderboard, venue geofence. */
+export async function updateEventSettings(formData: FormData) {
+  const leagueId = String(formData.get("leagueId") ?? "");
+  const me = await requireCommissioner(leagueId);
+
+  const allowGuests = formData.get("allowGuests") === "on";
+  let requireLocation = formData.get("requireLocation") === "on";
+
+  const coord = (k: string) => {
+    const raw = String(formData.get(k) ?? "").trim();
+    return raw && Number.isFinite(Number(raw)) ? Number(raw) : null;
+  };
+  const venueLat = coord("venueLat");
+  const venueLng = coord("venueLng");
+  const radius = Number(formData.get("venueRadiusM") ?? 0);
+  const venueRadiusM = VENUE_RADIUS_OPTIONS.some((o) => o.value === radius)
+    ? radius
+    : me.league.venueRadiusM;
+
+  // Location check needs a venue point — freshly captured or already saved.
+  const hasVenue =
+    (venueLat != null && venueLng != null) ||
+    (me.league.venueLat != null && me.league.venueLng != null);
+  if (requireLocation && !hasVenue) {
+    requireLocation = false;
+    await db.league.update({
+      where: { id: leagueId },
+      data: { allowGuests, requireLocation, venueRadiusM },
+    });
+    redirect(`/leagues/${leagueId}/admin?eventError=no-venue`);
+  }
+
+  await db.league.update({
+    where: { id: leagueId },
+    data: {
+      allowGuests,
+      requireLocation,
+      venueRadiusM,
+      ...(venueLat != null && venueLng != null ? { venueLat, venueLng } : {}),
     },
   });
   revalidatePath(`/leagues/${leagueId}`, "layout");

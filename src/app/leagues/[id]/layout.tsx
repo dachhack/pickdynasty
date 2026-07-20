@@ -26,6 +26,15 @@ export default async function LeagueLayout({
 
   return (
     <div>
+      {membership.user.isGuest && (
+        <p className="mb-4 rounded-lg border border-indigo-900 bg-indigo-950/50 px-4 py-2 text-sm text-indigo-300">
+          🎟️ You&rsquo;re playing as a guest on this device.{" "}
+          <Link href="/claim" className="font-semibold underline">
+            Claim your free account
+          </Link>{" "}
+          to keep your picks after tonight.
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-3xl">{sportEmoji(league.sport)}</span>
         <div>

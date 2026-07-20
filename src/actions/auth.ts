@@ -3,7 +3,7 @@
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { createSession, destroySession } from "@/lib/auth";
+import { adoptGuestAccounts, createSession, destroySession } from "@/lib/auth";
 import { supabaseEnabled, supabaseServer } from "@/lib/supabase";
 
 export type FormState = { error?: string; info?: string } | undefined;
@@ -49,8 +49,12 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
 
   if (supabaseEnabled()) {
     const supabase = await supabaseServer();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: "Invalid email or password." };
+    // Pre-existing account claimed by a guest: absorb it now. (New accounts
+    // are absorbed when their mirror row is first created.)
+    const mirror = data.user ? await db.user.findUnique({ where: { id: data.user.id } }) : null;
+    if (mirror) await adoptGuestAccounts(mirror);
     redirect(next);
   }
 

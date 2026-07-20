@@ -41,6 +41,11 @@ export default async function RootLayout({
                       🛡️ HQ
                     </Link>
                   )}
+                  {user.isGuest && (
+                    <Link href="/claim" className="text-indigo-400 hover:text-indigo-300">
+                      🎟️ Claim account
+                    </Link>
+                  )}
                   <span className="hidden text-slate-500 sm:inline">{user.name}</span>
                   <form action={logout}>
                     <button className="btn-ghost !px-3 !py-1.5 !text-xs">Sign out</button>

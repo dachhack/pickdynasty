@@ -198,7 +198,9 @@ export default async function SuperAdminPage({
                 <tr key={u.id} className="border-b border-slate-800/50 last:border-0">
                   <td className="px-5 py-3">
                     <span className="font-semibold">{u.name}</span>
-                    <span className="ml-2 text-xs text-slate-500">{u.email}</span>
+                    <span className="ml-2 text-xs text-slate-500">
+                      {u.isGuest ? "🎟️ guest" : u.email}
+                    </span>
                   </td>
                   <td className="px-3 py-3 text-right">{u._count.memberships}</td>
                   <td className="px-3 py-3 text-slate-500">{dateFmt.format(u.createdAt)}</td>
