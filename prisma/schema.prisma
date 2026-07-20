@@ -126,6 +126,10 @@ model Game {
   spread    Float?
   // ESPN event id when the game was imported — enables automatic result sync.
   externalId String?
+  // Sport this game was imported from, when it differs from the league's
+  // primary sport (null = league.sport). Lets one league mix NFL Sundays
+  // with MLB series etc.; sync fetches the right scoreboard per game.
+  sport     String?
   slate     Slate     @relation(fields: [slateId], references: [id], onDelete: Cascade)
   picks     Pick[]
   createdAt DateTime  @default(now())

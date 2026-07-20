@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireCommissioner } from "@/lib/league";
 import {
+  espnSupported,
   fetchScoreboard,
   fetchWeekScoreboard,
   WEEKLY_SPORTS,
@@ -20,7 +21,8 @@ async function createSlateWithGames(
   leagueId: string,
   name: string,
   games: EspnGame[],
-  pickDeadline: Date | null = null
+  pickDeadline: Date | null = null,
+  sport: string | null = null
 ) {
   return db.slate.create({
     data: {
@@ -30,6 +32,7 @@ async function createSlateWithGames(
       pickDeadline,
       games: {
         create: games.map((g) => ({
+          sport,
           homeTeam: g.homeTeam,
           awayTeam: g.awayTeam,
           startTime: g.startTime,
@@ -63,18 +66,21 @@ export async function createScheduleSlate(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const week = Number(formData.get("week") ?? 0);
   const dates = String(formData.get("dates") ?? "");
+  // Mixed-sport leagues: games may be imported from any ESPN-covered sport.
+  const sportRaw = String(formData.get("sport") ?? "");
+  const sport = espnSupported(sportRaw) ? sportRaw : me.league.sport;
   const selected = new Set(formData.getAll("selected").map(String));
   if (!name || selected.size === 0) return;
 
   const all = week
-    ? await fetchWeekScoreboard(me.league.sport, me.league.season, week)
+    ? await fetchWeekScoreboard(sport, me.league.season, week)
     : /^\d{8}(-\d{8})?$/.test(dates)
-      ? await fetchScoreboard(me.league.sport, dates)
+      ? await fetchScoreboard(sport, dates)
       : [];
   const games = all.filter((g) => selected.has(g.externalId));
   if (games.length === 0) return;
 
-  await createSlateWithGames(leagueId, name, games);
+  await createSlateWithGames(leagueId, name, games, null, sport === me.league.sport ? null : sport);
   revalidatePath(`/leagues/${leagueId}`, "layout");
   redirect(`/leagues/${leagueId}/admin/slates`);
 }

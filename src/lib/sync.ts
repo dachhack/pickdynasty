@@ -35,9 +35,14 @@ export async function syncLeagueResults(leagueId: string, sport: string): Promis
   const results = new Map<string, "HOME" | "AWAY" | "TIE">();
   const liveScores = new Map<string, EspnGame>();
 
-  const dates = [...new Set(scoreboardGames.map((g) => toEspnDate(g.startTime)))];
-  for (const date of dates) {
-    for (const g of await fetchScoreboard(sport, date)) {
+  // Games may come from different sports than the league's primary (mixed
+  // slates) — fetch each unique (sport, date) scoreboard once.
+  const sportDates = new Set(
+    scoreboardGames.map((g) => `${g.sport ?? sport}|${toEspnDate(g.startTime)}`)
+  );
+  for (const key of sportDates) {
+    const [gameSport, date] = key.split("|");
+    for (const g of await fetchScoreboard(gameSport, date)) {
       if (g.started) liveScores.set(g.externalId, g);
       if (g.completed && g.winner) results.set(g.externalId, g.winner);
     }

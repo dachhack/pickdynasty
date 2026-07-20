@@ -12,7 +12,7 @@ import {
   type EspnGame,
 } from "@/lib/espn";
 import { fetchFantasyMatchups, type FantasyMatchup } from "@/lib/fantasy";
-import { sportLabel } from "@/lib/sports";
+import { SPORTS, sportLabel } from "@/lib/sports";
 import {
   createFantasySlate,
   createManualSlate,
@@ -71,7 +71,7 @@ export default async function NewSlatePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ source?: string; week?: string; dates?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ source?: string; week?: string; dates?: string; from?: string; to?: string; sport?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -79,8 +79,12 @@ export default async function NewSlatePage({
   const { league } = me;
 
   const fantasyLink = await db.fantasyLink.findUnique({ where: { leagueId: id } });
-  const hasSchedule = espnSupported(league.sport);
-  const weekly = isWeeklySport(league.sport);
+  // Mixed-sport leagues: the schedule flow can import from ANY ESPN-covered
+  // sport, defaulting to the league's primary.
+  const sport = sp.sport && espnSupported(sp.sport) ? sp.sport : league.sport;
+  const sportQS = sport === league.sport ? "" : `&sport=${sport}`;
+  const hasSchedule = espnSupported(league.sport) || SPORTS.some((x) => espnSupported(x.id));
+  const weekly = isWeeklySport(sport);
 
   // Fall through to the only available source.
   let source = sp.source ?? "";
@@ -101,6 +105,30 @@ export default async function NewSlatePage({
     </Link>
   );
 
+  // Sport switcher for the schedule flow (league primary first).
+  const espnSports = [
+    ...SPORTS.filter((x) => x.id === league.sport && espnSupported(x.id)),
+    ...SPORTS.filter((x) => x.id !== league.sport && espnSupported(x.id)),
+  ];
+  const sportChips = (
+    <div className="flex flex-wrap gap-2">
+      {espnSports.map((x) => (
+        <Link
+          key={x.id}
+          href={`/leagues/${id}/admin/slates/new?source=schedule${x.id === league.sport ? "" : `&sport=${x.id}`}`}
+          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+            x.id === sport
+              ? "border-indigo-500 bg-indigo-950/50 text-white"
+              : "border-slate-800 text-slate-400 hover:border-slate-600"
+          }`}
+        >
+          {x.emoji} {x.label}
+          {x.id === league.sport && " (league)"}
+        </Link>
+      ))}
+    </div>
+  );
+
   // ---------- Step 1: pick a source ----------
   if (!source) {
     const sources = [
@@ -108,10 +136,8 @@ export default async function NewSlatePage({
         ? [{
             key: "schedule",
             emoji: "📅",
-            title: `Real ${sportLabel(league.sport)} games`,
-            body: weekly
-              ? "Pick a week — the whole schedule imports in one tap."
-              : "Pick a day or date range from the live schedule.",
+            title: `Real games (${sportLabel(league.sport)} + any sport)`,
+            body: "Import from the live ESPN schedule — your league's sport or mix in others.",
           }]
         : []),
       ...(fantasyLink
@@ -253,16 +279,17 @@ export default async function NewSlatePage({
 
   // ---------- Schedule (weekly sports) ----------
   if (source === "schedule" && weekly && !week) {
-    const currentWeek = await fetchCurrentWeek(league.sport);
-    const { maxWeek } = WEEKLY_SPORTS[league.sport];
+    const currentWeek = await fetchCurrentWeek(sport);
+    const { maxWeek } = WEEKLY_SPORTS[sport];
     return (
       <div className="flex max-w-2xl flex-col gap-6">
-        <h2 className="text-xl font-bold">{sportLabel(league.sport)} {league.season} — which week?</h2>
+        <h2 className="text-xl font-bold">{sportLabel(sport)} {league.season} — which week?</h2>
+        {sportChips}
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: maxWeek }, (_, i) => i + 1).map((w) => (
             <Link
               key={w}
-              href={`/leagues/${id}/admin/slates/new?source=schedule&week=${w}`}
+              href={`/leagues/${id}/admin/slates/new?source=schedule&week=${w}${sportQS}`}
               className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
                 w === currentWeek
                   ? "border-indigo-500 bg-indigo-950/50 text-white"
@@ -273,6 +300,7 @@ export default async function NewSlatePage({
             </Link>
           ))}
         </div>
+        {sport === league.sport && (
         <form action={createSeasonSlates} className="card flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="font-bold">🚀 Season autopilot</h3>
@@ -282,8 +310,9 @@ export default async function NewSlatePage({
           </div>
           <input type="hidden" name="leagueId" value={id} />
           <input type="hidden" name="fromWeek" value={currentWeek ?? 1} />
-          <button className="btn-ghost">Create weeks {currentWeek ?? 1}–{WEEKLY_SPORTS[league.sport].maxWeek}</button>
+          <button className="btn-ghost">Create weeks {currentWeek ?? 1}–{WEEKLY_SPORTS[sport].maxWeek}</button>
         </form>
+        )}
         {back}
       </div>
     );
@@ -293,12 +322,13 @@ export default async function NewSlatePage({
   if (source === "schedule" && !weekly && !dates) {
     return (
       <div className="flex max-w-2xl flex-col gap-6">
-        <h2 className="text-xl font-bold">{sportLabel(league.sport)} — which days?</h2>
+        <h2 className="text-xl font-bold">{sportLabel(sport)} — which days?</h2>
+        {sportChips}
         <div className="flex flex-wrap gap-2">
           {rangePresets().map((p) => (
             <Link
               key={p.label}
-              href={`/leagues/${id}/admin/slates/new?source=schedule&dates=${p.dates}`}
+              href={`/leagues/${id}/admin/slates/new?source=schedule&dates=${p.dates}${sportQS}`}
               className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 hover:border-slate-500"
             >
               {p.label}
@@ -307,6 +337,7 @@ export default async function NewSlatePage({
         </div>
         <form method="GET" className="card flex flex-wrap items-end gap-3">
           <input type="hidden" name="source" value="schedule" />
+          {sport !== league.sport && <input type="hidden" name="sport" value={sport} />}
           <div>
             <label className="label" htmlFor="from">From</label>
             <input className="input" type="date" id="from" name="from" required />
@@ -327,28 +358,30 @@ export default async function NewSlatePage({
   let fetchError = "";
   try {
     games = week
-      ? await fetchWeekScoreboard(league.sport, league.season, week)
-      : await fetchScoreboard(league.sport, dates);
+      ? await fetchWeekScoreboard(sport, league.season, week)
+      : await fetchScoreboard(sport, dates);
   } catch (e) {
     fetchError = e instanceof Error ? e.message : "Could not reach ESPN.";
   }
-  const defaultName = week ? `Week ${week}` : rangeLabel(dates);
+  const namePrefix = sport === league.sport ? "" : `${sportLabel(sport)} · `;
+  const defaultName = namePrefix + (week ? `Week ${week}` : rangeLabel(dates));
   const firstUpcoming = games.find((g) => !g.completed);
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <h2 className="text-xl font-bold">
-        {sportLabel(league.sport)} · {defaultName}
+        {sportLabel(sport)} · {week ? `Week ${week}` : rangeLabel(dates)}
       </h2>
       {fetchError ? (
         <p className="rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">{fetchError}</p>
       ) : games.length === 0 ? (
         <p className="card text-center text-slate-400">
-          No games found{week ? ` for week ${week} of ${league.season}` : " in that range"}.
+          No {sportLabel(sport)} games found{week ? ` for week ${week} of ${league.season}` : " in that range"}.
         </p>
       ) : (
         <form action={createScheduleSlate} className="card flex flex-col gap-1">
           <input type="hidden" name="leagueId" value={id} />
+          <input type="hidden" name="sport" value={sport} />
           {week ? (
             <input type="hidden" name="week" value={week} />
           ) : (
