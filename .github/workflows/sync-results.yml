@@ -12,28 +12,42 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # The `secrets` context isn't allowed in step `if:` — mirror into env
+    # and gate on that instead. (An if on secrets.* invalidates the whole
+    # file: every push then logs a phantom 0-job failed run and the cron
+    # schedule never fires.)
+    env:
+      PROD_CRON_SECRET: ${{ secrets.PROD_CRON_SECRET }}
+      STAGING_CRON_SECRET: ${{ secrets.STAGING_CRON_SECRET }}
+      APP_URL: ${{ vars.APP_URL || 'https://epicpickem.com' }}
+      STAGING_APP_URL: ${{ vars.STAGING_APP_URL }}
     steps:
       - name: Sync results (production)
-        if: ${{ secrets.PROD_CRON_SECRET != '' }}
+        if: env.PROD_CRON_SECRET != ''
         run: |
           curl -fsS --max-time 120 \
-            -H "Authorization: Bearer ${{ secrets.PROD_CRON_SECRET }}" \
-            "${{ vars.APP_URL || 'https://epicpickem.com' }}/api/cron/sync"
+            -H "Authorization: Bearer $PROD_CRON_SECRET" \
+            "$APP_URL/api/cron/sync"
 
       - name: Send deadline reminders (production)
-        if: ${{ secrets.PROD_CRON_SECRET != '' }}
+        if: env.PROD_CRON_SECRET != ''
         run: |
           curl -fsS --max-time 120 \
-            -H "Authorization: Bearer ${{ secrets.PROD_CRON_SECRET }}" \
-            "${{ vars.APP_URL || 'https://epicpickem.com' }}/api/cron/reminders"
+            -H "Authorization: Bearer $PROD_CRON_SECRET" \
+            "$APP_URL/api/cron/reminders"
 
       - name: Sync results (staging)
-        if: vars.STAGING_APP_URL != ''
+        if: env.STAGING_APP_URL != ''
         continue-on-error: true
         run: |
           curl -fsS --max-time 120 \
-            -H "Authorization: Bearer ${{ secrets.STAGING_CRON_SECRET }}" \
-            "${{ vars.STAGING_APP_URL }}/api/cron/sync"
+            -H "Authorization: Bearer $STAGING_CRON_SECRET" \
+            "$STAGING_APP_URL/api/cron/sync"
           curl -fsS --max-time 120 \
-            -H "Authorization: Bearer ${{ secrets.STAGING_CRON_SECRET }}" \
-            "${{ vars.STAGING_APP_URL }}/api/cron/reminders"
+            -H "Authorization: Bearer $STAGING_CRON_SECRET" \
+            "$STAGING_APP_URL/api/cron/reminders"
+
+      - name: Nothing configured
+        if: env.PROD_CRON_SECRET == '' && env.STAGING_APP_URL == ''
+        run: |
+          echo "No targets: set PROD_CRON_SECRET (secret) for production and/or STAGING_APP_URL (variable) for staging."
