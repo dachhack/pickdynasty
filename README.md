@@ -32,10 +32,10 @@ NHL, tennis, MLS, and anything else you can score.
 - **League chat** — trash talk with team-branded messages, one-tap emoji reactions, and
   GIF search (add a free GIPHY API key via GIPHY_API_KEY to enable the picker). Polling
   MVP today; swaps to Supabase Realtime when the production project is connected.
-- **Email (Resend-powered, optional)** — commissioners can email invites and one-click
+- **Email (optional; Google Workspace SMTP or Resend)** — commissioners can email invites and one-click
   "nudge" everyone who hasn't picked; the scheduled sync also sends automated deadline
   reminders (max one per member per slate, with signed one-click unsubscribe). All
-  key-gated behind RESEND_API_KEY.
+  gated behind SMTP_USER/SMTP_PASS (or RESEND_API_KEY).
 - **Admin area** — member management (promote/demote commissioners, remove players),
   league settings, invite management.
 - **Installable on mobile** — the site is a PWA (`manifest.json`); "Add to Home Screen"

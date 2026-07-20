@@ -15,9 +15,10 @@
 #      Supabase Auth (shared accounts with Drip) — without them staging uses
 #      the built-in email/password auth, which is fine for testing.
 #      Optional: GIPHY_API_KEY to light up GIF search in chat.
-#      Optional: RESEND_API_KEY + EMAIL_FROM (e.g. "Epic Pick'em
-#      <commish@epicpickem.com>", domain verified in Resend) to enable
-#      invite emails, nudges, and automated deadline reminders.
+#      Optional (email — invites, nudges, deadline reminders):
+#        SMTP_USER + SMTP_PASS — Google Workspace address + app password
+#        (myaccount.google.com/apppasswords; preferred, same provider as
+#        Drip), and optionally EMAIL_FROM. Or RESEND_API_KEY instead.
 #   4. Actions tab → "Deploy staging (Fly)" → Run workflow.
 #
 #   App comes up at https://epicpickem-staging.fly.dev
@@ -67,6 +68,10 @@ jobs:
           args+=("APP_URL=https://epicpickem-staging.fly.dev")
           if [ -n "${{ secrets.GIPHY_API_KEY }}" ]; then
             args+=("GIPHY_API_KEY=${{ secrets.GIPHY_API_KEY }}")
+          fi
+          if [ -n "${{ secrets.SMTP_USER }}" ]; then
+            args+=("SMTP_USER=${{ secrets.SMTP_USER }}")
+            args+=("SMTP_PASS=${{ secrets.SMTP_PASS }}")
           fi
           if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
             args+=("RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}")

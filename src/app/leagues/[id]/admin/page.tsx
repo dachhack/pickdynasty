@@ -95,7 +95,7 @@ export default async function AdminPage({
           </form>
         ) : (
           <p className="mt-3 text-xs text-slate-600">
-            💡 Email invites light up when a Resend API key is configured (RESEND_API_KEY).
+            💡 Email invites light up when email sending is configured (SMTP_USER/SMTP_PASS or RESEND_API_KEY).
           </p>
         )}
       </section>

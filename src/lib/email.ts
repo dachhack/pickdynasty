@@ -1,39 +1,62 @@
 import { SignJWT, jwtVerify } from "jose";
+import nodemailer from "nodemailer";
 
-// Email via Resend's REST API (no SDK needed). Key-gated like the GIF
-// picker: without RESEND_API_KEY every send is a graceful no-op and the
-// email UI hides itself.
+// Email with two interchangeable drivers, gated like the GIF picker — when
+// neither is configured every send is a graceful no-op and the email UI
+// hides itself:
 //
-// EMAIL_FROM must use a domain verified in the Resend dashboard, e.g.
-//   "Epic Pick'em <commish@epicpickem.com>"
-// (Resend's onboarding@resend.dev sender only delivers to your own account
-// email — fine for a first smoke test, useless for a league.)
+//  1. SMTP (preferred — Google Workspace, the provider already used for
+//     Drip): set SMTP_USER + SMTP_PASS (a Google app password), optionally
+//     SMTP_HOST/SMTP_PORT (defaults to smtp.gmail.com:465). Gmail rewrites
+//     the From to the authenticated user unless EMAIL_FROM matches a
+//     configured send-as alias.
+//  2. Resend REST API: set RESEND_API_KEY (EMAIL_FROM domain must be
+//     verified in the Resend dashboard).
+
+function smtpConfigured(): boolean {
+  return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+}
 
 export function emailEnabled(): boolean {
-  return Boolean(process.env.RESEND_API_KEY);
+  return smtpConfigured() || Boolean(process.env.RESEND_API_KEY);
 }
 
 export function appUrl(): string {
   return process.env.APP_URL ?? "http://localhost:3000";
 }
 
-const FROM = () => process.env.EMAIL_FROM ?? "Epic Pick'em <onboarding@resend.dev>";
+const FROM = () =>
+  process.env.EMAIL_FROM ??
+  (process.env.SMTP_USER ? `Epic Pick'em <${process.env.SMTP_USER}>` : "Epic Pick'em <onboarding@resend.dev>");
 
 export type SendResult = { ok: boolean; error?: string };
 
-export async function sendEmail(input: {
-  to: string;
-  subject: string;
-  html: string;
-}): Promise<SendResult> {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return { ok: false, error: "email disabled" };
+async function sendViaSmtp(input: { to: string; subject: string; html: string }): Promise<SendResult> {
+  try {
+    const port = Number(process.env.SMTP_PORT ?? 465);
+    const transport = nodemailer.createTransport({
+      host: process.env.SMTP_HOST ?? "smtp.gmail.com",
+      port,
+      secure: port === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      // A slow provider must never stall a page action or the cron run.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
+    });
+    await transport.sendMail({ from: FROM(), to: input.to, subject: input.subject, html: input.html });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message.slice(0, 200) : "smtp send failed" };
+  }
+}
+
+async function sendViaResend(input: { to: string; subject: string; html: string }): Promise<SendResult> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: FROM(), to: [input.to], subject: input.subject, html: input.html }),
-      // A slow provider must never stall a page action or the cron run.
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
@@ -44,6 +67,16 @@ export async function sendEmail(input: {
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "send failed" };
   }
+}
+
+export async function sendEmail(input: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<SendResult> {
+  if (smtpConfigured()) return sendViaSmtp(input);
+  if (process.env.RESEND_API_KEY) return sendViaResend(input);
+  return { ok: false, error: "email disabled" };
 }
 
 // ---------- Unsubscribe tokens (signed with SESSION_SECRET) ----------
