@@ -25,6 +25,9 @@
 name: Deploy staging (Fly)
 
 on:
+  # Auto-deploy staging on every push to main (plus the manual button).
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
