@@ -48,14 +48,63 @@ export type EspnGame = {
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// ---- At-scale fetch layer -------------------------------------------------
+// Many leagues syncing the same slate would otherwise hit ESPN once per
+// league. A short-TTL cache with in-flight deduplication makes each cron
+// tick cost ESPN at most one request per unique (sport, query) — constant
+// upstream load regardless of league count. Errors are never cached, and a
+// single retry with backoff absorbs transient blips.
+
+const SCOREBOARD_TTL_MS = 60_000;
+const scoreboardCache = new Map<string, { at: number; promise: Promise<EspnGame[]> }>();
+let upstreamFetches = 0;
+
+/** Total ESPN requests since process start — cron reports the per-tick delta. */
+export function espnFetchCount(): number {
+  return upstreamFetches;
+}
+
+async function fetchWithRetry(url: string): Promise<any> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      upstreamFetches++;
+      const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(15_000) });
+      if (!res.ok) throw new Error(`ESPN API returned ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      if (attempt >= 1) throw e;
+      await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+    }
+  }
+}
+
 async function espnScoreboard(sport: string, query: string): Promise<EspnGame[]> {
   const cfg = ESPN_PATHS[sport];
   if (!cfg) return [];
   const groups = cfg.groups ? `&groups=${cfg.groups}` : "";
   const url = `https://site.api.espn.com/apis/site/v2/sports/${cfg.path}/scoreboard?${query}&limit=300${groups}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`ESPN API returned ${res.status}`);
-  const data: any = await res.json();
+
+  const cached = scoreboardCache.get(url);
+  if (cached && Date.now() - cached.at < SCOREBOARD_TTL_MS) return cached.promise;
+
+  const promise = fetchAndParse(url);
+  scoreboardCache.set(url, { at: Date.now(), promise });
+  // Never cache a failure — evict so the next caller retries fresh.
+  promise.catch(() => {
+    if (scoreboardCache.get(url)?.promise === promise) scoreboardCache.delete(url);
+  });
+  // Opportunistic sweep so the map can't grow unbounded over a season.
+  if (scoreboardCache.size > 200) {
+    for (const [k, v] of scoreboardCache) {
+      if (Date.now() - v.at >= SCOREBOARD_TTL_MS) scoreboardCache.delete(k);
+    }
+  }
+  return promise;
+}
+
+async function fetchAndParse(url: string): Promise<EspnGame[]> {
+  const data: any = await fetchWithRetry(url);
 
   const games: EspnGame[] = [];
   for (const event of data.events ?? []) {

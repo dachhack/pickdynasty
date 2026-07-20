@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { espnFetchCount } from "@/lib/espn";
 import { syncLeagueResults } from "@/lib/sync";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
     select: { id: true, sport: true, name: true },
   });
 
+  const fetchesBefore = espnFetchCount();
   const results: { league: string; updated: number; error?: string }[] = [];
   for (const league of leagues) {
     try {
@@ -44,5 +46,11 @@ export async function GET(request: Request) {
       });
     }
   }
-  return NextResponse.json({ leaguesChecked: leagues.length, results });
+  return NextResponse.json({
+    leaguesChecked: leagues.length,
+    // With the shared cache this stays ~constant (one per unique sport+date)
+    // no matter how many leagues synced — watch it to verify feed efficiency.
+    upstreamEspnFetches: espnFetchCount() - fetchesBefore,
+    results,
+  });
 }
