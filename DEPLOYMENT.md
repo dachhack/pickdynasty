@@ -14,6 +14,34 @@ products:
 | CI | GitHub Actions | `ci.yml`: lint + build against a Postgres service container |
 | Analytics | PostHog | (not yet wired into Epic — add `posthog-js` with the same org as Drip) |
 
+## Production launch checklist (epicpickem.com)
+
+All browser steps; the "Deploy production (Fly)" workflow does the rest.
+
+1. **Supabase prod project** — ideally the shared Drip project (unified
+   accounts). Copy pooled + direct pooler connection strings; set GitHub
+   secrets `PROD_DATABASE_URL` / `PROD_DIRECT_URL`.
+2. **Supabase Auth** — Authentication → URL Configuration → Site URL
+   `https://epicpickem.com`; set secrets `PROD_SUPABASE_URL` /
+   `PROD_SUPABASE_ANON_KEY`. Configure custom SMTP (Google Workspace) in
+   Supabase Auth settings and paste branded templates (Drip's
+   docs/email-templates pattern).
+3. **Fresh secrets** — `PROD_SESSION_SECRET`, `PROD_CRON_SECRET` (new random
+   strings, not staging's).
+4. **Fly app + token** — create app `epicpickem`, mint an app-scoped deploy
+   token, set secret `PROD_FLY_API_TOKEN`. (The SSO restriction means tokens
+   come from `flyctl tokens` / the API — the staging token is scoped to
+   epicpickem-staging only.)
+5. **Run "Deploy production (Fly)"** from the Actions tab.
+6. **Domain** — allocate IPs + certs for `epicpickem.com` and
+   `www.epicpickem.com` (flyctl or API), then at the registrar: A record →
+   Fly IPv4, AAAA → Fly IPv6 (values from `fly ips list`), and the
+   acme-challenge CNAME Fly prints for cert validation.
+7. **Repo variables** — `STAGING_APP_URL=https://epicpickem-staging.fly.dev`
+   (keeps staging cron alive); leave `APP_URL` unset (defaults to prod).
+8. **Smoke test** — sign up with the founder email (auto super admin),
+   create a league, import a slate, invite one friend.
+
 ## First deploy
 
 1. **Supabase**: use the existing Drip project (shared accounts) — or a fresh

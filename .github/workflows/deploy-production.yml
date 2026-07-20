@@ -1,0 +1,81 @@
+# Production deploy for epicpickem.com — same browser-only pattern as staging.
+#
+# One-time setup:
+#   1. Supabase PRODUCTION project (recommended: the shared Drip project for
+#      unified accounts) → pooled + direct connection strings.
+#   2. Fly app `epicpickem` + an app-scoped deploy token (the staging token
+#      only works for epicpickem-staging).
+#   3. GitHub repo → Settings → Secrets and variables → Actions → add:
+#        PROD_FLY_API_TOKEN      (deploy token scoped to app `epicpickem`)
+#        PROD_DATABASE_URL       (pooled, ?pgbouncer=true)
+#        PROD_DIRECT_URL         (session pooler, port 5432)
+#        PROD_SESSION_SECRET     (fresh random string — do not reuse staging's)
+#        PROD_CRON_SECRET        (fresh random string)
+#      Strongly recommended for prod (shared accounts + verified emails):
+#        PROD_SUPABASE_URL + PROD_SUPABASE_ANON_KEY
+#      Shared with staging (already set if you configured them):
+#        GIPHY_API_KEY, SMTP_USER, SMTP_PASS, EMAIL_FROM
+#   4. Actions tab → "Deploy production (Fly)" → Run workflow.
+#   5. Custom domain: `fly certs add epicpickem.com` (or the GraphQL
+#      equivalent) + DNS records at the registrar — see DEPLOYMENT.md.
+name: Deploy production (Fly)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.PROD_FLY_API_TOKEN }}
+      APP: epicpickem
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify database connection & run migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+        run: npx prisma@6 migrate deploy
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create app if missing
+        run: flyctl apps create "$APP" || true
+
+      - name: Set runtime secrets
+        run: |
+          args=(
+            "DATABASE_URL=${{ secrets.PROD_DATABASE_URL }}"
+            "DIRECT_URL=${{ secrets.PROD_DIRECT_URL }}"
+            "SESSION_SECRET=${{ secrets.PROD_SESSION_SECRET }}"
+            "CRON_SECRET=${{ secrets.PROD_CRON_SECRET }}"
+            "APP_URL=https://epicpickem.com"
+          )
+          if [ -n "${{ secrets.GIPHY_API_KEY }}" ]; then
+            args+=("GIPHY_API_KEY=${{ secrets.GIPHY_API_KEY }}")
+          fi
+          if [ -n "${{ secrets.SMTP_USER }}" ]; then
+            args+=("SMTP_USER=${{ secrets.SMTP_USER }}")
+            args+=("SMTP_PASS=${{ secrets.SMTP_PASS }}")
+          fi
+          if [ -n "${{ secrets.EMAIL_FROM }}" ]; then
+            args+=("EMAIL_FROM=${{ secrets.EMAIL_FROM }}")
+          fi
+          flyctl secrets set --app "$APP" --stage "${args[@]}"
+
+      - name: Deploy
+        run: |
+          flyctl deploy --app "$APP" --remote-only \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ secrets.PROD_SUPABASE_URL }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.PROD_SUPABASE_ANON_KEY }}"
+
+      - name: Show URL
+        run: echo "🌐 https://$APP.fly.dev → https://epicpickem.com once DNS points at it"

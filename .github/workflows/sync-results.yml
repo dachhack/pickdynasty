@@ -1,7 +1,7 @@
-# Scheduled result sync — replaces Vercel cron in the consolidated
-# Supabase + Fly + GitHub Actions stack (same ops pattern as Drip's
-# sync/simulate workflows). Hits the CRON_SECRET-guarded endpoint so game
-# results and standings update without anyone pressing "Sync".
+# Scheduled jobs: result sync + deadline reminders, every 15 minutes.
+# Hits PRODUCTION by default (override host with the APP_URL repo variable).
+# Also hits staging when the STAGING_APP_URL variable is set — staging
+# failures don't fail the run.
 name: Sync results
 
 on:
@@ -13,14 +13,27 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Call sync endpoint
+      - name: Sync results (production)
+        if: ${{ secrets.PROD_CRON_SECRET != '' }}
         run: |
           curl -fsS --max-time 120 \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Authorization: Bearer ${{ secrets.PROD_CRON_SECRET }}" \
             "${{ vars.APP_URL || 'https://epicpickem.com' }}/api/cron/sync"
 
-      - name: Send deadline reminders
+      - name: Send deadline reminders (production)
+        if: ${{ secrets.PROD_CRON_SECRET != '' }}
         run: |
           curl -fsS --max-time 120 \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Authorization: Bearer ${{ secrets.PROD_CRON_SECRET }}" \
             "${{ vars.APP_URL || 'https://epicpickem.com' }}/api/cron/reminders"
+
+      - name: Sync results (staging)
+        if: vars.STAGING_APP_URL != ''
+        continue-on-error: true
+        run: |
+          curl -fsS --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.STAGING_CRON_SECRET }}" \
+            "${{ vars.STAGING_APP_URL }}/api/cron/sync"
+          curl -fsS --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.STAGING_CRON_SECRET }}" \
+            "${{ vars.STAGING_APP_URL }}/api/cron/reminders"
