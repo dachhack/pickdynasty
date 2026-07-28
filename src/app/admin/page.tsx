@@ -28,6 +28,20 @@ export default async function SuperAdminPage({
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { games: true } } },
   });
+  const now = new Date(); // force-dynamic page: rendered fresh per request
+  const [lastSync, daySyncs] = await Promise.all([
+    db.syncRun.findFirst({ orderBy: { startedAt: "desc" } }),
+    db.syncRun.findMany({
+      where: { startedAt: { gt: new Date(now.getTime() - 24 * 3600 * 1000) } },
+    }),
+  ]);
+  const syncAgeMin = lastSync
+    ? Math.round((now.getTime() - lastSync.startedAt.getTime()) / 60000)
+    : null;
+  // Cron runs every 15 min — anything past 45 means missed ticks.
+  const syncStale = syncAgeMin != null && syncAgeMin > 45;
+  const dayUpdated = daySyncs.reduce((n, r) => n + r.gamesUpdated, 0);
+  const dayErrored = daySyncs.filter((r) => r.errors).length;
   const [users, leagues, counts] = await Promise.all([
     db.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -85,6 +99,66 @@ export default async function SuperAdminPage({
           </div>
         ))}
       </div>
+
+      <section className="card">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-bold">📡 Feed health</h2>
+          {lastSync ? (
+            syncStale ? (
+              <span className="rounded-full bg-red-950 px-2 py-0.5 text-xs font-semibold text-red-300">
+                ⚠️ Stale — last tick {syncAgeMin} min ago
+              </span>
+            ) : lastSync.errors ? (
+              <span className="rounded-full bg-amber-950 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                ⚠️ Errors on last tick
+              </span>
+            ) : (
+              <span className="rounded-full bg-emerald-950 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+                ✅ Healthy
+              </span>
+            )
+          ) : (
+            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+              No sync ticks recorded yet
+            </span>
+          )}
+        </div>
+        {lastSync && (
+          <>
+            <div className="mt-3 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+              <div className="rounded-lg border border-slate-800 py-3">
+                <p className="text-xl font-black">{syncAgeMin}m</p>
+                <p className="text-xs text-slate-500">since last tick</p>
+              </div>
+              <div className="rounded-lg border border-slate-800 py-3">
+                <p className="text-xl font-black">{lastSync.leaguesChecked}</p>
+                <p className="text-xs text-slate-500">leagues checked</p>
+              </div>
+              <div className="rounded-lg border border-slate-800 py-3">
+                <p className="text-xl font-black">{lastSync.upstreamFetches}</p>
+                <p className="text-xs text-slate-500">ESPN fetches / tick</p>
+              </div>
+              <div className="rounded-lg border border-slate-800 py-3">
+                <p className="text-xl font-black">{dayUpdated}</p>
+                <p className="text-xs text-slate-500">games updated · 24h</p>
+              </div>
+            </div>
+            {(lastSync.errors || dayErrored > 0) && (
+              <div className="mt-3 rounded-lg border border-amber-900 bg-amber-950/40 px-4 py-2 text-sm text-amber-300">
+                {dayErrored > 0 && <p>{dayErrored} of {daySyncs.length} ticks in the last 24h had errors.</p>}
+                {lastSync.errors && (
+                  <pre className="mt-1 whitespace-pre-wrap font-mono text-xs">{lastSync.errors}</pre>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        <p className="mt-3 text-xs text-slate-500">
+          Ticks come from the 15-min Sync results workflow; the daily ESPN canary
+          workflow probes the upstream API shape. Both go red in GitHub Actions when
+          something breaks.
+        </p>
+      </section>
 
       <section className="card">
         <h2 className="font-bold">🎁 Pick packs</h2>

@@ -6,9 +6,15 @@ import { syncLeagueResults } from "@/lib/sync";
 export const dynamic = "force-dynamic";
 
 /**
- * Scheduled result sync — hit by Vercel Cron (see vercel.json) or any
- * external scheduler. Syncs every league that has imported games awaiting
- * results. Guarded by CRON_SECRET in production.
+ * Scheduled result sync — hit by the GitHub Actions "Sync results" workflow
+ * every 15 minutes (or any external scheduler). Syncs every league that has
+ * imported games awaiting results. Guarded by CRON_SECRET in production.
+ *
+ * Fail-loud: when leagues needed syncing and EVERY one of them errored,
+ * responds 502 so the workflow's `curl -fsS` turns the run red instead of
+ * silently shipping a stale scoreboard. Partial failures stay 200 but are
+ * recorded and reported. Every tick writes a SyncRun row for the HQ
+ * feed-health tile (pruned after 7 days).
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -19,6 +25,7 @@ export async function GET(request: Request) {
     }
   }
 
+  const startedAt = new Date();
   const leagues = await db.league.findMany({
     where: {
       slates: {
@@ -46,11 +53,40 @@ export async function GET(request: Request) {
       });
     }
   }
-  return NextResponse.json({
-    leaguesChecked: leagues.length,
-    // With the shared cache this stays ~constant (one per unique sport+date)
-    // no matter how many leagues synced — watch it to verify feed efficiency.
-    upstreamEspnFetches: espnFetchCount() - fetchesBefore,
-    results,
-  });
+
+  const errored = results.filter((r) => r.error);
+  const upstreamEspnFetches = espnFetchCount() - fetchesBefore;
+  const gamesUpdated = results.reduce((n, r) => n + r.updated, 0);
+
+  // Health record for the HQ tile — best-effort, never fails the sync.
+  try {
+    await db.syncRun.create({
+      data: {
+        startedAt,
+        durationMs: Date.now() - startedAt.getTime(),
+        leaguesChecked: leagues.length,
+        gamesUpdated,
+        upstreamFetches: upstreamEspnFetches,
+        errors: errored.map((r) => `${r.league}: ${r.error}`).join("\n"),
+      },
+    });
+    await db.syncRun.deleteMany({
+      where: { startedAt: { lt: new Date(Date.now() - 7 * 24 * 3600 * 1000) } },
+    });
+  } catch {
+    // e.g. migration not applied yet — sync itself still succeeded
+  }
+
+  const allFailed = leagues.length > 0 && errored.length === leagues.length;
+  return NextResponse.json(
+    {
+      leaguesChecked: leagues.length,
+      gamesUpdated,
+      // With the shared cache this stays ~constant (one per unique sport+date)
+      // no matter how many leagues synced — watch it to verify feed efficiency.
+      upstreamEspnFetches,
+      results,
+    },
+    { status: allFailed ? 502 : 200 }
+  );
 }

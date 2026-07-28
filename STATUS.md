@@ -18,16 +18,14 @@ Bursts when owner has time — recent pace was daily; assume weekly minimum unti
 
 ## Last worked
 
-2026-07-20 — Shipped bar event nights (guest quick-join, venue geofence, public TV leaderboard, account claim); fixed the invalid sync-results workflow that was failing every push and silently disabling the results cron; made staging auto-deploy on push to main.
+2026-07-24 — Feed observability shipped: SyncRun health rows + fail-loud cron sync (502 when every league errors), daily ESPN canary workflow probing API shape, HQ feed-health tile. Owner set STAGING_APP_URL + GIPHY/SMTP keys; staging cron leg now active.
 
 ## Current blockers
 
 - Production launch is owner-gated: Supabase prod project, PROD_* secrets, Fly app `epicpickem` + app-scoped token (needs a CLI-session auth handshake), DNS/certs for epicpickem.com.
-- Repo variable `STAGING_APP_URL` unset, so the 15-min results-sync cron still skips staging.
-- Optional keys unset: GIPHY_API_KEY (chat GIFs), SMTP_USER/SMTP_PASS (invite/reminder email).
 
 ## Next 3 tasks
 
-1. Set `STAGING_APP_URL` repo variable and confirm the scheduled results sync hits staging.
+1. Confirm the 15-min sync cron goes green with the staging leg executing, and the canary's first scheduled run passes.
 2. Run the production launch checklist in DEPLOYMENT.md (fresh prod secrets — staging ones appeared in chat).
-3. Feed observability: daily ESPN canary workflow, fail-loud sync step, HQ feed-health tile.
+3. Venue tier v2: recurring event nights + cross-night "bar regulars" leaderboard.

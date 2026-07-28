@@ -221,6 +221,21 @@ model PickPackGame {
   pack       PickPack @relation(fields: [packId], references: [id], onDelete: Cascade)
 }
 
+// Feed observability: one row per cron result-sync tick, pruned after 7
+// days. The HQ feed-health tile reads these; the cron route writes them.
+model SyncRun {
+  id              String   @id @default(cuid())
+  startedAt       DateTime @default(now())
+  durationMs      Int
+  leaguesChecked  Int
+  gamesUpdated    Int
+  upstreamFetches Int
+  // "League name: error message" lines, newline-joined. Empty = clean run.
+  errors          String   @default("")
+
+  @@index([startedAt])
+}
+
 // One automated deadline reminder per member per slate — the cron endpoint
 // checks this before emailing so nobody gets nagged twice.
 model ReminderLog {

@@ -1,0 +1,19 @@
+# Daily ESPN feed canary: fails red when the public ESPN API changes shape
+# or stops answering, so we hear about feed breakage before players do.
+name: ESPN feed canary
+
+on:
+  schedule:
+    - cron: "0 12 * * *" # daily, 12:00 UTC (morning US time)
+  workflow_dispatch:
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Probe ESPN endpoints
+        run: node scripts/espn-canary.mjs
