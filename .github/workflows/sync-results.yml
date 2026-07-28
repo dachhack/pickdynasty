@@ -20,7 +20,9 @@ jobs:
       PROD_CRON_SECRET: ${{ secrets.PROD_CRON_SECRET }}
       STAGING_CRON_SECRET: ${{ secrets.STAGING_CRON_SECRET }}
       APP_URL: ${{ vars.APP_URL || 'https://epicpickem.com' }}
-      STAGING_APP_URL: ${{ vars.STAGING_APP_URL }}
+      # Accept the URL from either a repo variable or a secret — easy to
+      # add in the wrong tab, and a skipped sync is worse than leniency.
+      STAGING_APP_URL: ${{ vars.STAGING_APP_URL || secrets.STAGING_APP_URL }}
     steps:
       - name: Sync results (production)
         if: env.PROD_CRON_SECRET != ''
