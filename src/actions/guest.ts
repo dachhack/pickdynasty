@@ -87,7 +87,11 @@ export async function claimAccount(
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name: me.name } },
+      options: {
+        data: { name: me.name },
+        // Shared Supabase project — route confirmation links back to Epic.
+        emailRedirectTo: `${process.env.APP_URL ?? "https://epicpickem.com"}/login`,
+      },
     });
     if (error) return { error: error.message };
     await db.user.update({ where: { id: me.id }, data: { claimEmail: email } });

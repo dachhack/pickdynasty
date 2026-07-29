@@ -23,7 +23,12 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name } },
+      options: {
+        data: { name },
+        // Shared Supabase project with Drip: without this, confirmation
+        // links bounce to the project-level Site URL (Drip's domain).
+        emailRedirectTo: `${process.env.APP_URL ?? "https://epicpickem.com"}/login`,
+      },
     });
     if (error) return { error: error.message };
     if (!data.session) {
