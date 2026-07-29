@@ -18,9 +18,13 @@ products:
 
 All browser steps; the "Deploy production (Fly)" workflow does the rest.
 
-1. **Supabase prod project** — ideally the shared Drip project (unified
-   accounts). Copy pooled + direct pooler connection strings; set GitHub
-   secrets `PROD_DATABASE_URL` / `PROD_DIRECT_URL`.
+1. **Supabase prod project** — the shared Drip project (unified accounts).
+   Copy pooled + direct pooler connection strings and append Epic's
+   dedicated schema (keeps Prisma off Drip's `public` tables — avoids
+   P3005 — and out of the PostgREST API surface):
+   - `PROD_DATABASE_URL`: `...?pgbouncer=true&schema=epicpickem`
+   - `PROD_DIRECT_URL`: `...?schema=epicpickem`
+   Validate any time with the "Verify production database" workflow.
 2. **Supabase Auth** — Authentication → URL Configuration → Site URL
    `https://epicpickem.com`; set secrets `PROD_SUPABASE_URL` /
    `PROD_SUPABASE_ANON_KEY`. Configure custom SMTP (Google Workspace) in
