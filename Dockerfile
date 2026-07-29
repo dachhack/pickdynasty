@@ -14,7 +14,14 @@ RUN npx prisma generate && npm run build
 
 FROM node:22-alpine
 WORKDIR /app
-ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
+# ENV does not survive across stages — re-declare the public Supabase config
+# so the SERVER runtime sees it too (supabaseEnabled() reads process.env at
+# request time; without this the app silently falls back to local JWT auth).
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 \
+    NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 COPY --from=builder /app ./
 EXPOSE 3000
 # Apply pending migrations, then serve. DATABASE_URL/DIRECT_URL/SESSION_SECRET/
