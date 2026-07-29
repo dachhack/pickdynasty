@@ -1,0 +1,21 @@
+# On-demand check that PROD_DATABASE_URL / PROD_DIRECT_URL are correct:
+# connects to the production database and applies Epic's migrations
+# (idempotent — safe to run any time). Green run = the secrets work.
+name: Verify production database
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Connect & migrate
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+        run: npx prisma@6 migrate deploy
