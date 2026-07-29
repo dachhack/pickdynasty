@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { adoptGuestAccounts, createSession, destroySession } from "@/lib/auth";
@@ -69,6 +70,30 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   }
   await createSession(user.id);
   redirect(next);
+}
+
+/**
+ * Third-party sign-in via Supabase Auth (PKCE): redirects to the provider,
+ * which lands back on /auth/callback. Only offered when Supabase is the
+ * active auth driver.
+ */
+export async function signInWithGoogle(formData: FormData) {
+  if (!supabaseEnabled()) redirect("/login");
+  const nextRaw = String(formData.get("next") ?? "");
+  const next = nextRaw.startsWith("/") ? nextRaw : "/dashboard";
+
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${proto}://${host}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
+  if (error || !data.url) redirect("/login?error=oauth");
+  redirect(data.url);
 }
 
 export async function logout() {

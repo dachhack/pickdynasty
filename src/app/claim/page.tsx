@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import ClaimForm from "@/components/ClaimForm";
+import GoogleSignIn from "@/components/GoogleSignIn";
 
 export default async function ClaimPage() {
   const user = await getCurrentUser();
@@ -18,6 +19,8 @@ export default async function ClaimPage() {
       <div className="mt-6">
         <ClaimForm />
       </div>
+      {/* OAuth claim: the callback route absorbs this device's guest account. */}
+      <GoogleSignIn next="/dashboard?claimed=1" label="Claim with Google" />
     </div>
   );
 }

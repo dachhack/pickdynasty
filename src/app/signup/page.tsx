@@ -1,4 +1,5 @@
 import AuthForm from "@/components/AuthForm";
+import GoogleSignIn from "@/components/GoogleSignIn";
 
 export default async function SignupPage({
   searchParams,
@@ -6,5 +7,10 @@ export default async function SignupPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
-  return <AuthForm mode="signup" next={next} />;
+  return (
+    <>
+      <AuthForm mode="signup" next={next} />
+      <GoogleSignIn next={next} />
+    </>
+  );
 }

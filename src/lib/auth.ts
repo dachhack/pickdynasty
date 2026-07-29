@@ -79,7 +79,9 @@ async function mirrorSupabaseUser(id: string, email: string, name: string) {
   return created;
 }
 
-async function jwtCookieUser() {
+/** The guest/dev JWT-cookie user, ignoring any Supabase session. Exported
+ *  for the OAuth callback, which needs the guest identity mid-handoff. */
+export async function jwtCookieUser() {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;

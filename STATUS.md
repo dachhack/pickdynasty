@@ -10,7 +10,7 @@ Epic Pick'em (epicpickem.com): pick'em leagues with friends across every sport �
 
 ## Current phase
 
-Feature-complete staging (epicpickem-staging.fly.dev, auto-deploys from main); production launch checklist in DEPLOYMENT.md not yet run.
+PRODUCTION IS LIVE at epicpickem.fly.dev (Fly app `epicpickem`, dedicated `epicpickem` schema in the shared Drip Supabase project, shared accounts working). Awaiting DNS cutover to epicpickem.com (records issued, owner adding at Squarespace).
 
 ## Cadence
 
@@ -18,14 +18,15 @@ Bursts when owner has time — recent pace was daily; assume weekly minimum unti
 
 ## Last worked
 
-2026-07-24 — Feed observability shipped: SyncRun health rows + fail-loud cron sync (502 when every league errors), daily ESPN canary workflow probing API shape, HQ feed-health tile. Owner set STAGING_APP_URL + GIPHY/SMTP keys; staging cron leg now active.
+2026-07-29 — PRODUCTION LAUNCHED: deploy green on Fly app `epicpickem`, dedicated DB schema migrated in shared Drip Supabase project, IPs + certs allocated, DNS records handed to owner (Squarespace, pending). Smoke test passed with shared Drip login. Added Google sign-in (OAuth callback route, guest-claim-via-Google, buttons on login/signup/claim).
 
 ## Current blockers
 
-- Production launch is owner-gated: Supabase prod project, PROD_* secrets, Fly app `epicpickem` + app-scoped token (needs a CLI-session auth handshake), DNS/certs for epicpickem.com.
+- DNS records for epicpickem.com pending at Squarespace (A, AAAA, www CNAME, 2× acme-challenge CNAMEs) — certs auto-issue once they propagate.
+- Google provider needs enabling in the shared Supabase project (or confirming Drip already enabled it) before the Google button works in prod.
 
 ## Next 3 tasks
 
-1. Confirm the 15-min sync cron goes green with the staging leg executing, and the canary's first scheduled run passes.
-2. Run the production launch checklist in DEPLOYMENT.md (fresh prod secrets — staging ones appeared in chat).
+1. Verify epicpickem.com DNS + certs after owner adds records; flip APP_URL variable to https://epicpickem.com; re-run Deploy production to ship Google sign-in.
+2. Confirm first prod cron ticks and ESPN canary run are green; watch HQ feed-health tile on prod.
 3. Venue tier v2: recurring event nights + cross-night "bar regulars" leaderboard.
