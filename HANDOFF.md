@@ -147,18 +147,15 @@ dynamic invite unfurls).
   edits apply to FUTURE nights only (running night edits live in its league
   admin — documented in UI); unclaimed guests appear once per night on the
   regulars wall (claiming merges them — by design, nudge copy exists).
-- Drip-branded auth emails: FIXED in code (see Branded auth emails above)
-  but needs the owner to add the GH secret PROD_SUPABASE_SECRET_KEY —
-  create an sb_secret_... key in the Supabase dashboard (Settings → API
-  Keys → "Create new secret key", name it e.g. epicpickem-prod) — and run
-  a prod deploy; until then flows fall back to Drip-branded Supabase
-  sends. Optional: STAGING_SUPABASE_SECRET_KEY (mint a separate key so
-  either can be revoked alone; shared project). Then verify: signup +
-  forgot-password emails arrive from no_reply@epicpickem.com with Epic
-  branding, links sign in. Caveat from Supabase docs: sb_secret keys had
-  auth.admin issues only on SELF-HOSTED/local stacks — hosted (ours) is
-  fine; if generateLink ever 401s, the legacy service_role JWT still works
-  via the same env var.
+- Drip-branded auth emails: FIXED and LIVE in prod (deploy run #9 verified:
+  PROD_SUPABASE_SECRET_KEY staged as SUPABASE_SECRET_KEY). Still to verify
+  by hand: signup + forgot-password emails arrive from
+  no_reply@epicpickem.com with Epic branding and their links sign in.
+  Optional: STAGING_SUPABASE_SECRET_KEY for staging (mint a separate key so
+  either can be revoked alone; shared project). Caveat from Supabase docs:
+  sb_secret keys had auth.admin issues only on SELF-HOSTED/local stacks —
+  hosted (ours) is fine; if generateLink ever 401s, the legacy service_role
+  JWT still works via the same env var.
 - Supabase Realtime chat (polling MVP today), H2H compare, season champion
   card, brackets, Yahoo import, Expo native app, PostHog analytics.
 - Picks aren't location-rechecked after joining a geofenced league (join
