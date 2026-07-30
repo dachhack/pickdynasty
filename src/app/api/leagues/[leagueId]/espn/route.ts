@@ -8,8 +8,11 @@ import {
   fetchTeams,
   fetchTeamSchedule,
   fetchWeekScoreboard,
+  isWeeklySport,
+  toEspnDate,
   type EspnGame,
 } from "@/lib/espn";
+import { SPORTS } from "@/lib/sports";
 import {
   curatedPackList,
   resolveCuratedPack,
@@ -28,6 +31,8 @@ export const dynamic = "force-dynamic";
 //   ?mode=day&sport=mlb&date=20260919          -> a day or YYYYMMDD-YYYYMMDD
 //   ?mode=packs                                -> available pick packs
 //   ?mode=pack&pack=philly|db:<id>&season=2026 -> a pack's games
+//   ?mode=window&sport=nfl&season=2026&week=1  -> that week's date span,
+//       swept across EVERY sport (cross-sport calendar filter)
 
 function serialize(games: (EspnGame & { sport?: string })[], fallbackSport: string) {
   return games.map((g) => ({
@@ -84,6 +89,45 @@ export async function GET(
 
     const sport = q.get("sport") ?? "";
     if (!espnSupported(sport)) return NextResponse.json({ error: "unsupported sport" }, { status: 400 });
+
+    if (mode === "window") {
+      const season = (q.get("season") ?? "").replace(/\D/g, "").slice(0, 4);
+      const week = Number(q.get("week") ?? 0);
+      if (!isWeeklySport(sport) || !season || !week) return NextResponse.json({ games: [] });
+
+      // The anchor week's real date span (± half a day for TZ slop) ...
+      const anchor = await fetchWeekScoreboard(sport, season, week);
+      if (anchor.length === 0) return NextResponse.json({ games: [], window: null });
+      const times = anchor.map((g) => g.startTime.getTime());
+      const start = new Date(Math.min(...times) - 12 * 3600_000);
+      const end = new Date(Math.max(...times) + 12 * 3600_000);
+      const range = `${toEspnDate(start)}-${toEspnDate(end)}`;
+
+      // ... swept across every other ESPN sport. march-madness aliases cbb.
+      const sweep = SPORTS.filter(
+        (s) => s.id !== sport && s.id !== "march-madness" && espnSupported(s.id)
+      ).map((s) => s.id);
+      const games: (EspnGame & { sport: string })[] = anchor.map((g) => ({ ...g, sport }));
+      // Sweep in small batches — a 13-league burst trips ESPN's throttling.
+      for (let i = 0; i < sweep.length; i += 4) {
+        await Promise.all(
+          sweep.slice(i, i + 4).map(async (s) => {
+            try {
+              for (const g of await fetchScoreboard(s, range)) {
+                if (g.startTime >= start && g.startTime <= end) games.push({ ...g, sport: s });
+              }
+            } catch {
+              // One off-season league failing shouldn't kill the window.
+            }
+          })
+        );
+      }
+      games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+      return NextResponse.json({
+        window: { start: start.toISOString(), end: end.toISOString() },
+        games: serialize(games, sport),
+      });
+    }
 
     if (mode === "teams") {
       return NextResponse.json({ teams: await fetchTeams(sport) });

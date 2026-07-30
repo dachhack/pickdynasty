@@ -64,7 +64,9 @@ export default function SlateBuilder({
   const router = useRouter();
   const [sport, setSport] = useState(leagueSport);
   const weekly = sport in weeklyMax;
-  const [mode, setMode] = useState<"packs" | "week" | "day" | "team">(weekly ? "week" : "day");
+  const [mode, setMode] = useState<"packs" | "week" | "day" | "team" | "window">(weekly ? "week" : "day");
+  // Cross-sport window anchor: an NFL/CFB week whose date span filters all sports.
+  const [anchorSport, setAnchorSport] = useState(sport in weeklyMax ? sport : "nfl");
   const [packs, setPacks] = useState<PackInfo[]>([]);
   const [packId, setPackId] = useState("");
   const [season, setSeason] = useState(leagueSeason);
@@ -99,7 +101,9 @@ export default function SlateBuilder({
     setPoolError("");
     try {
       let url = "";
-      if (mode === "week") url = `/api/leagues/${leagueId}/espn?mode=week&sport=${sport}&season=${season}&week=${week}`;
+      if (mode === "window")
+        url = `/api/leagues/${leagueId}/espn?mode=window&sport=${anchorSport}&season=${season}&week=${week}`;
+      else if (mode === "week") url = `/api/leagues/${leagueId}/espn?mode=week&sport=${sport}&season=${season}&week=${week}`;
       else if (mode === "day") url = `/api/leagues/${leagueId}/espn?mode=day&sport=${sport}&date=${date.replaceAll("-", "")}`;
       else if (mode === "team" && teamId)
         url = `/api/leagues/${leagueId}/espn?mode=team&sport=${sport}&team=${teamId}&season=${season}`;
@@ -120,25 +124,27 @@ export default function SlateBuilder({
         const label =
           mode === "packs"
             ? packs.find((pk) => pk.id === packId)?.title ?? "Pick pack"
-            : mode === "week"
-              ? `Week ${week}`
-              : mode === "day"
-                ? timeFmt.format(new Date(`${date}T12:00:00-05:00`)).split(",").slice(0, 2).join(",")
-                : `${teams.find((t) => t.id === teamId)?.name ?? "Team"} schedule`;
-        setName(`${sportPrefix}${label}`);
+            : mode === "window"
+              ? `Week ${week} — everything`
+              : mode === "week"
+                ? `Week ${week}`
+                : mode === "day"
+                  ? timeFmt.format(new Date(`${date}T12:00:00-05:00`)).split(",").slice(0, 2).join(",")
+                  : `${teams.find((t) => t.id === teamId)?.name ?? "Team"} schedule`;
+        setName(mode === "window" ? label : `${sportPrefix}${label}`);
       }
     } catch {
       setPoolError("Couldn't load the schedule — try again.");
     }
     setLoading(false);
-  }, [leagueId, mode, sport, season, week, date, teamId, packId, packs, leagueSport, sports, teams]);
+  }, [leagueId, mode, sport, anchorSport, season, week, date, teamId, packId, packs, leagueSport, sports, teams]);
 
   // Debounced so season typing / rapid tab-switching doesn't storm ESPN.
   useEffect(() => {
     const t = setTimeout(query, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, sport, season, week, date, teamId, packId]);
+  }, [mode, sport, anchorSport, season, week, date, teamId, packId]);
 
   // Lazy-load the pack list when entering packs mode.
   useEffect(() => {
@@ -168,14 +174,31 @@ export default function SlateBuilder({
     })();
   }, [mode, sport, teams.length, leagueId]);
 
-  function addAll() {
+  function addMany(games: PoolGame[]) {
     tapHaptic();
     setSlate((prev) => {
       const have = new Set(prev.map(keyOf));
-      const fresh = pool.filter((g) => !have.has(keyOf(g)));
+      const fresh = games.filter((g) => !have.has(keyOf(g)));
       return [...prev, ...fresh].slice(0, 64);
     });
   }
+  function addAll() {
+    addMany(pool);
+  }
+
+  // Window mode: pool grouped by sport, anchor league first.
+  const windowGroups = useMemo(() => {
+    if (mode !== "window") return null;
+    const bySport = new Map<string, PoolGame[]>();
+    for (const g of pool) {
+      const k = g.sport ?? anchorSport;
+      if (!bySport.has(k)) bySport.set(k, []);
+      bySport.get(k)!.push(g);
+    }
+    return [...bySport.entries()].sort(([a], [b]) =>
+      a === anchorSport ? -1 : b === anchorSport ? 1 : a.localeCompare(b)
+    );
+  }, [mode, pool, anchorSport]);
 
   function add(g: PoolGame) {
     if (chosen.has(keyOf(g))) return;
@@ -215,26 +238,31 @@ export default function SlateBuilder({
       <div className="grid gap-4 lg:grid-cols-2">
         {/* ---- Pool ---- */}
         <div className="card">
-          <div className="flex flex-wrap gap-2">
-            {sports.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => pickSport(s.id)}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                  s.id === sport
-                    ? "border-indigo-500 bg-indigo-950/50 text-white"
-                    : "border-slate-800 text-slate-400 hover:border-slate-600"
-                }`}
-              >
-                {s.emoji} {s.label}
-              </button>
-            ))}
-          </div>
+          {mode !== "window" && (
+            <div className="flex flex-wrap gap-2">
+              {sports.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => pickSport(s.id)}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    s.id === sport
+                      ? "border-indigo-500 bg-indigo-950/50 text-white"
+                      : "border-slate-800 text-slate-400 hover:border-slate-600"
+                  }`}
+                >
+                  {s.emoji} {s.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <div className="flex rounded-lg border border-slate-700 p-0.5 text-xs font-semibold">
-              {(weekly ? (["week", "day", "team", "packs"] as const) : (["day", "team", "packs"] as const)).map((m) => (
+              {(weekly
+                ? (["week", "day", "team", "packs", "window"] as const)
+                : (["day", "team", "packs", "window"] as const)
+              ).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -243,10 +271,31 @@ export default function SlateBuilder({
                     mode === m ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  {m === "packs" ? "🎁 Packs" : `By ${m}`}
+                  {m === "packs" ? "🎁 Packs" : m === "window" ? "🗓️ All sports" : `By ${m}`}
                 </button>
               ))}
             </div>
+            {mode === "window" && (
+              <>
+                <select
+                  className="input !w-auto !py-1.5 !text-sm"
+                  value={anchorSport}
+                  onChange={(e) => setAnchorSport(e.target.value)}
+                  title="Anchor week"
+                >
+                  {Object.keys(weeklyMax).map((id) => (
+                    <option key={id} value={id}>
+                      {sports.find((s) => s.id === id)?.label ?? id} week
+                    </option>
+                  ))}
+                </select>
+                <select className="input !w-auto !py-1.5 !text-sm" value={week} onChange={(e) => setWeek(Number(e.target.value))}>
+                  {Array.from({ length: weeklyMax[anchorSport] ?? 18 }, (_, i) => i + 1).map((w) => (
+                    <option key={w} value={w}>Week {w}</option>
+                  ))}
+                </select>
+              </>
+            )}
             {mode === "week" && (
               <select className="input !w-auto !py-1.5 !text-sm" value={week} onChange={(e) => setWeek(Number(e.target.value))}>
                 {Array.from({ length: weeklyMax[sport] ?? 18 }, (_, i) => i + 1).map((w) => (
@@ -265,7 +314,7 @@ export default function SlateBuilder({
                 ))}
               </select>
             )}
-            {(mode === "week" || mode === "team") && (
+            {(mode === "week" || mode === "team" || mode === "window") && (
               <input
                 className="input !w-24 !py-1.5 !text-sm"
                 value={season}
@@ -317,13 +366,38 @@ export default function SlateBuilder({
                     : "No games found."}
               </p>
             )}
-            {!loading &&
-              pool.map((g) => {
-                const inSlate = chosen.has(keyOf(g));
-                return (
-                  <PoolCard key={keyOf(g)} game={g} disabled={inSlate} onAdd={() => add(g)} emoji={sportMeta(g.sport)?.emoji ?? "🏆"} />
-                );
-              })}
+            {!loading && windowGroups
+              ? windowGroups.map(([groupSport, games]) => {
+                  const meta = sportMeta(groupSport);
+                  return (
+                    <div key={groupSport} className="flex flex-col gap-1.5">
+                      <div className="mt-2 flex items-center justify-between gap-2 first:mt-0">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                          {meta?.emoji} {meta?.label ?? groupSport}
+                          {groupSport === anchorSport && " · anchor"}
+                          <span className="ml-1 font-normal">({games.length})</span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => addMany(games)}
+                          className="btn-ghost !px-2 !py-0.5 !text-xs"
+                        >
+                          + all {games.length}
+                        </button>
+                      </div>
+                      {games.map((g) => (
+                        <PoolCard key={keyOf(g)} game={g} disabled={chosen.has(keyOf(g))} onAdd={() => add(g)} emoji={meta?.emoji ?? "🏆"} />
+                      ))}
+                    </div>
+                  );
+                })
+              : !loading &&
+                pool.map((g) => {
+                  const inSlate = chosen.has(keyOf(g));
+                  return (
+                    <PoolCard key={keyOf(g)} game={g} disabled={inSlate} onAdd={() => add(g)} emoji={sportMeta(g.sport)?.emoji ?? "🏆"} />
+                  );
+                })}
           </div>
         </div>
 
