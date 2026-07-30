@@ -18,15 +18,14 @@ Bursts when owner has time — recent pace was daily; assume weekly minimum unti
 
 ## Last worked
 
-2026-07-29 — PRODUCTION LAUNCHED: deploy green on Fly app `epicpickem`, dedicated DB schema migrated in shared Drip Supabase project, IPs + certs allocated, DNS records handed to owner (Squarespace, pending). Smoke test passed with shared Drip login. Added Google sign-in (OAuth callback route, guest-claim-via-Google, buttons on login/signup/claim).
+2026-07-30 — Launch completed end-to-end: epicpickem.com DNS + certs live, prod cron green on both targets, Supabase auth active in prod (fixed Dockerfile dropping NEXT_PUBLIC_* between stages), Google sign-in shipped, branded email via Google Workspace (epicpickem.com user-alias domain on the Drip org; SPF/DKIM/DMARC set at Squarespace; sends as no_reply@epicpickem.com).
 
 ## Current blockers
 
-- DNS records for epicpickem.com pending at Squarespace (A, AAAA, www CNAME, 2× acme-challenge CNAMEs) — certs auto-issue once they propagate.
-- Google provider needs enabling in the shared Supabase project (or confirming Drip already enabled it) before the Google button works in prod.
+- None for core operation. Verify in-app: Google button on /signup works (needs Google provider enabled in the shared Supabase project), and a test invite email lands.
 
 ## Next 3 tasks
 
-1. Verify epicpickem.com DNS + certs after owner adds records; flip APP_URL variable to https://epicpickem.com; re-run Deploy production to ship Google sign-in.
-2. Confirm first prod cron ticks and ESPN canary run are green; watch HQ feed-health tile on prod.
+1. Owner verification pass: Google sign-in round-trip, invite email delivery, HQ feed-health tile on prod.
+2. Supabase project polish: custom SMTP for auth emails + brand-neutral templates (currently Drip-branded for both products); tighten DMARC to quarantine after a few clean weeks.
 3. Venue tier v2: recurring event nights + cross-night "bar regulars" leaderboard.
