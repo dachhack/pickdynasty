@@ -18,14 +18,14 @@ Bursts when owner has time — recent pace was daily; assume weekly minimum unti
 
 ## Last worked
 
-2026-07-30 — Launch completed end-to-end: epicpickem.com DNS + certs live, prod cron green on both targets, Supabase auth active in prod (fixed Dockerfile dropping NEXT_PUBLIC_* between stages), Google sign-in shipped, branded email via Google Workspace (epicpickem.com user-alias domain on the Drip org; SPF/DKIM/DMARC set at Squarespace; sends as no_reply@epicpickem.com).
+2026-07-30 — Feature burst on top of the live launch: trophy-check brand (logo, favicons, PWA icons, header), OG share cards (static site card + dynamic league-invite unfurls), Top 25 CFB rule pack (fills when the AP poll drops mid-August), cross-sport week window in the slate builder, player share cards + trophy case, commissioner chat pins + league notes. All on main, awaiting one Deploy production run.
 
 ## Current blockers
 
-- None for core operation. Verify in-app: Google button on /signup works (needs Google provider enabled in the shared Supabase project), and a test invite email lands.
+- None. Owner is deploying the feature batch to production.
 
 ## Next 3 tasks
 
-1. Owner verification pass: Google sign-in round-trip, invite email delivery, HQ feed-health tile on prod.
-2. Supabase project polish: custom SMTP for auth emails + brand-neutral templates (currently Drip-branded for both products); tighten DMARC to quarantine after a few clean weeks.
+1. Post-deploy spot check: share a result card from a phone, pin a chat message, confirm the Top 25 pack fills once the preseason AP poll lands (~mid-August).
+2. Supabase project polish: custom SMTP for auth emails + brand-neutral templates; tighten DMARC to quarantine after a few clean weeks.
 3. Venue tier v2: recurring event nights + cross-night "bar regulars" leaderboard.
