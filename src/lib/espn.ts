@@ -48,6 +48,9 @@ export type EspnGame = {
   awayScore: number | null;
   // Home-perspective point spread from ESPN odds (pregame only).
   spread: number | null;
+  // AP poll rank at game time (1–25), college sports only.
+  homeRank: number | null;
+  awayRank: number | null;
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -126,6 +129,10 @@ async function fetchAndParse(url: string): Promise<EspnGame[]> {
       winner = hs > as ? "HOME" : as > hs ? "AWAY" : "TIE";
     }
     const rawSpread = comp.odds?.[0]?.spread;
+    const rank = (c: any) => {
+      const r = Number(c?.curatedRank?.current);
+      return r >= 1 && r <= 25 ? r : null;
+    };
     games.push({
       externalId: String(event.id),
       homeTeam: home.team?.displayName ?? "Home",
@@ -137,6 +144,8 @@ async function fetchAndParse(url: string): Promise<EspnGame[]> {
       homeScore: started && !isNaN(hs) ? hs : null,
       awayScore: started && !isNaN(as) ? as : null,
       spread: typeof rawSpread === "number" ? rawSpread : null,
+      homeRank: rank(home),
+      awayRank: rank(away),
     });
   }
   games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
@@ -224,6 +233,8 @@ export async function fetchTeamSchedule(
       homeScore: completed && !isNaN(hs) ? hs : null,
       awayScore: completed && !isNaN(as) ? as : null,
       spread: null,
+      homeRank: null,
+      awayRank: null,
     });
   }
   games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());

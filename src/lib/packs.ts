@@ -1,9 +1,12 @@
 import { db } from "./db";
 import {
+  fetchCurrentWeek,
   fetchScoreboard,
   fetchTeams,
   fetchTeamSchedule,
+  fetchWeekScoreboard,
   toEspnDate,
+  WEEKLY_SPORTS,
   type EspnGame,
 } from "./espn";
 
@@ -51,8 +54,16 @@ const THEME_PACKS: Record<string, { title: string; emoji: string; sports: string
 const PACK_WINDOW_DAYS = 30;
 const PACK_MAX_GAMES = 60;
 
+const TOP25_PACK: PackInfo = {
+  id: "cfb-top25",
+  title: "Top 25 College Football",
+  emoji: "🏅",
+  description: "This week's games with an AP Top 25 team — refreshes weekly",
+};
+
 export function rulePackList(): PackInfo[] {
   return [
+    TOP25_PACK,
     ...Object.entries(CITY_PACKS).map(([id, p]) => ({
       id,
       title: p.title,
@@ -128,7 +139,40 @@ async function resolveThemePack(sports: string[]): Promise<PackGame[]> {
   return dedupe(out);
 }
 
+/**
+ * This week's AP Top 25 college football games. Starts at ESPN's current
+ * week (or week 1 pre-season) and scans forward a few weeks to skip
+ * fully-finished ones — Sunday shares point at next Saturday's slate.
+ * Ranked team names get their "#N" prefix so the pick board reads like
+ * the poll. Empty until the preseason AP poll drops (mid-August).
+ */
+async function resolveTop25Pack(season: string): Promise<PackGame[]> {
+  const start = (await fetchCurrentWeek("cfb").catch(() => null)) ?? 1;
+  const max = WEEKLY_SPORTS.cfb.maxWeek;
+  for (let week = start; week <= Math.min(start + 3, max); week++) {
+    try {
+      const games = await fetchWeekScoreboard("cfb", season, week);
+      const ranked = games.filter(
+        (g) => (g.homeRank ?? 99) <= 25 || (g.awayRank ?? 99) <= 25
+      );
+      if (ranked.length === 0 || ranked.every((g) => g.completed)) continue;
+      return dedupe(
+        ranked.map((g) => ({
+          ...g,
+          homeTeam: g.homeRank ? `#${g.homeRank} ${g.homeTeam}` : g.homeTeam,
+          awayTeam: g.awayRank ? `#${g.awayRank} ${g.awayTeam}` : g.awayTeam,
+          sport: "cfb",
+        }))
+      );
+    } catch {
+      // A bad week fetch shouldn't kill the pack — try the next week.
+    }
+  }
+  return [];
+}
+
 export async function resolveRulePack(id: string, season: string): Promise<PackGame[] | null> {
+  if (id === TOP25_PACK.id) return resolveTop25Pack(season);
   if (CITY_PACKS[id]) return resolveCityPack(CITY_PACKS[id], season);
   if (THEME_PACKS[id]) return resolveThemePack(THEME_PACKS[id].sports);
   return null;
@@ -167,5 +211,7 @@ export async function resolveCuratedPack(dbId: string, includeUnpublished = fals
     homeScore: g.homeScore,
     awayScore: g.awayScore,
     spread: g.spread,
+    homeRank: null,
+    awayRank: null,
   }));
 }
