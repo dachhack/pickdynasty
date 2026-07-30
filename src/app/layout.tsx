@@ -11,6 +11,20 @@ export const metadata: Metadata = {
     "Set up, track, and compete in pick'em leagues for any sport — NFL, college football, March Madness, MLB, NHL, tennis, and more.",
   metadataBase: new URL("https://epicpickem.com"),
   manifest: "/manifest.json",
+  openGraph: {
+    title: "Epic Pick'em — Pick'em Leagues With Friends",
+    description: "Pick'em leagues with friends — every sport, all season long.",
+    url: "https://epicpickem.com",
+    siteName: "Epic Pick'em",
+    images: [{ url: "/og.png", width: 1200, height: 630 }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Epic Pick'em — Pick'em Leagues With Friends",
+    description: "Pick'em leagues with friends — every sport, all season long.",
+    images: ["/og.png"],
+  },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: "/apple-touch-icon.png",
