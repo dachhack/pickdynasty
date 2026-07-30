@@ -11,6 +11,10 @@ export const metadata: Metadata = {
     "Set up, track, and compete in pick'em leagues for any sport — NFL, college football, March Madness, MLB, NHL, tennis, and more.",
   metadataBase: new URL("https://epicpickem.com"),
   manifest: "/manifest.json",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: { capable: true, title: "Epic Pick'em", statusBarStyle: "black-translucent" },
 };
 
@@ -27,8 +31,10 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-            <Link href={user ? "/dashboard" : "/"} className="text-lg font-black tracking-tight">
-              ⚡ Epic<span className="text-indigo-400">Pick&rsquo;em</span>
+            <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2 text-lg font-black tracking-tight">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon.svg" alt="" className="h-7 w-7" />
+              Epic<span className="text-indigo-400">Pick&rsquo;em</span>
             </Link>
             <nav className="flex items-center gap-3 text-sm">
               {user ? (
