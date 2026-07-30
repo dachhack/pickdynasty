@@ -9,6 +9,8 @@ export type MessageView = {
   author: { name: string; color: string; emoji: string } | null;
   mine: boolean;
   canDelete: boolean;
+  pinned: boolean;
+  canPin: boolean; // commissioners only
   reactions: { emoji: string; count: number; mine: boolean; who: string }[];
 };
 
@@ -53,6 +55,8 @@ export async function loadMessages(
       : null,
     mine: m.membershipId === viewer.id,
     canDelete: m.membershipId === viewer.id || isCommish,
+    pinned: m.pinnedAt != null,
+    canPin: isCommish,
     reactions: REACTION_EMOJIS.map((emoji) => {
       const rows = m.reactions.filter((r) => r.emoji === emoji);
       return {

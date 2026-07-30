@@ -7,6 +7,7 @@ import {
   removeMember,
   toggleRole,
   updateEventSettings,
+  updateLeagueNotes,
   updateLeagueSettings,
 } from "@/actions/admin";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
@@ -266,6 +267,25 @@ export default async function AdminPage({
             <button className="btn sm:col-span-3 sm:justify-self-start">Connect fantasy league</button>
           </form>
         )}
+      </section>
+
+      <section className="card">
+        <h2 className="font-bold">📋 League notes</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Rules, payout structure, house rules — shown to every member at the top of the
+          standings page. Line breaks are kept.
+        </p>
+        <form action={updateLeagueNotes} className="mt-3 flex flex-col gap-3">
+          <input type="hidden" name="leagueId" value={id} />
+          <textarea
+            className="input min-h-[8rem] font-mono !text-sm"
+            name="notes"
+            maxLength={4000}
+            defaultValue={league.notes}
+            placeholder={"💰 $20 buy-in, winner takes 70%, runner-up 30%\n📅 Picks lock at kickoff\n🍺 Loser buys the first round"}
+          />
+          <button className="btn self-start">Save notes</button>
+        </form>
       </section>
 
       <section className="card">

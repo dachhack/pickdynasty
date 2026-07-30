@@ -32,9 +32,29 @@ export async function sendMessage(input: {
       },
       mine: true,
       canDelete: true,
+      pinned: false,
+      canPin: membership.role === "COMMISSIONER",
       reactions: REACTION_EMOJIS.map((emoji) => ({ emoji, count: 0, mine: false, who: "" })),
     },
   };
+}
+
+/** Commissioner-only: pin a message to the 📌 bar (or unpin it). */
+export async function togglePinMessage(input: {
+  leagueId: string;
+  messageId: string;
+}): Promise<{ ok: boolean }> {
+  const membership = await requireMembership(input.leagueId);
+  if (membership.role !== "COMMISSIONER") return { ok: false };
+  const message = await db.message.findFirst({
+    where: { id: input.messageId, leagueId: input.leagueId },
+  });
+  if (!message) return { ok: false };
+  await db.message.update({
+    where: { id: message.id },
+    data: { pinnedAt: message.pinnedAt ? null : new Date() },
+  });
+  return { ok: true };
 }
 
 export async function deleteMessage(input: {

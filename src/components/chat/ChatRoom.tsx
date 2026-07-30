@@ -6,6 +6,7 @@ import {
   fetchMessages,
   sendMessage,
   toggleMessageReaction,
+  togglePinMessage,
 } from "@/actions/chat";
 import type { MessageView } from "@/lib/chat";
 import { tapHaptic } from "@/components/boards/celebrate";
@@ -129,8 +130,43 @@ export default function ChatRoom({
     deleteMessage({ leagueId, messageId }).catch(() => refresh());
   }
 
+  function onPin(messageId: string) {
+    tapHaptic();
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, pinned: !m.pinned } : m))
+    );
+    togglePinMessage({ leagueId, messageId }).catch(() => refresh());
+  }
+
+  const pinned = messages.filter((m) => m.pinned);
+
   return (
     <div className="flex h-[70vh] flex-col rounded-xl border border-slate-800 bg-slate-900/40">
+      {pinned.length > 0 && (
+        <div className="flex max-h-32 flex-col gap-1 overflow-y-auto border-b border-amber-900/60 bg-amber-950/20 px-4 py-2">
+          {pinned.map((m) => (
+            <div key={`pin-${m.id}`} className="flex items-start gap-2 text-sm">
+              <span className="shrink-0">📌</span>
+              <p className="min-w-0 flex-1 text-amber-100">
+                <span className="font-semibold" style={{ color: m.author?.color }}>
+                  {m.author?.name ?? "Departed member"}:
+                </span>{" "}
+                <span className="text-slate-200">{m.body || (m.gifUrl ? "(GIF)" : "")}</span>
+              </p>
+              {m.canPin && (
+                <button
+                  type="button"
+                  onClick={() => onPin(m.id)}
+                  className="shrink-0 text-xs text-slate-500 hover:text-white"
+                  title="Unpin"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       <div ref={listRef} className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 && (
           <p className="py-10 text-center text-sm text-slate-500">
@@ -152,6 +188,16 @@ export default function ChatRoom({
                     {m.author?.name ?? "Departed member"}
                   </span>{" "}
                   · {timeFmt.format(new Date(m.createdAt))}
+                  {m.pinned && <span className="ml-1" title="Pinned">📌</span>}
+                  {m.canPin && (
+                    <button
+                      type="button"
+                      onClick={() => onPin(m.id)}
+                      className="ml-2 hidden text-amber-400 hover:underline group-hover:inline"
+                    >
+                      {m.pinned ? "unpin" : "📌 pin"}
+                    </button>
+                  )}
                   {m.canDelete && (
                     <button
                       type="button"

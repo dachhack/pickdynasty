@@ -41,6 +41,14 @@ export default async function LeagueHome({
 
   return (
     <div className="flex flex-col gap-6">
+      {league.notes && (
+        <section className="card !py-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            📋 League notes
+          </h2>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-200">{league.notes}</p>
+        </section>
+      )}
       <div className="card overflow-x-auto !p-0">
         <table className="w-full text-sm">
           <thead>

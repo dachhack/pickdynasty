@@ -53,6 +53,9 @@ model League {
   adminCanSeePicks Boolean @default(false)
   buyIn       Float        @default(0)
   currency    String       @default("USD")
+  // Commissioner's league notes (rules, payouts, house rules) — shown to
+  // every member on the standings page.
+  notes       String       @default("")
   // 🍻 Event night mode: guest quick-join (QR → display name → picking)
   // plus the public /tv/<inviteCode> big-screen leaderboard.
   allowGuests Boolean      @default(false)
@@ -175,6 +178,8 @@ model Message {
   membershipId String? // kept nullable so messages survive member removal
   body         String            @default("")
   gifUrl       String?
+  // Commissioner-pinned (📌 bar at the top of chat). Null = not pinned.
+  pinnedAt     DateTime?
   createdAt    DateTime          @default(now())
   league       League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   membership   Membership?       @relation(fields: [membershipId], references: [id], onDelete: SetNull)

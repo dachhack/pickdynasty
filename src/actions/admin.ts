@@ -75,6 +75,16 @@ export async function updateEventSettings(formData: FormData) {
   redirect(`/leagues/${leagueId}/admin?saved=1`);
 }
 
+/** Commissioner's league notes — rules, payouts, house rules. */
+export async function updateLeagueNotes(formData: FormData) {
+  const leagueId = String(formData.get("leagueId") ?? "");
+  await requireCommissioner(leagueId);
+  const notes = String(formData.get("notes") ?? "").slice(0, 4000);
+  await db.league.update({ where: { id: leagueId }, data: { notes } });
+  revalidatePath(`/leagues/${leagueId}`, "layout");
+  redirect(`/leagues/${leagueId}/admin?saved=1`);
+}
+
 export async function regenerateInviteCode(formData: FormData) {
   const leagueId = String(formData.get("leagueId") ?? "");
   await requireCommissioner(leagueId);
