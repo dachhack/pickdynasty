@@ -14,6 +14,8 @@
 #      Optional: STAGING_SUPABASE_URL + STAGING_SUPABASE_ANON_KEY to enable
 #      Supabase Auth (shared accounts with Drip) — without them staging uses
 #      the built-in email/password auth, which is fine for testing.
+#      Optional with those + SMTP: STAGING_SUPABASE_SERVICE_ROLE_KEY so auth
+#      emails are Epic-branded instead of the shared project's Drip templates.
 #      Optional: GIPHY_API_KEY to light up GIF search in chat.
 #      Optional (email — invites, nudges, deadline reminders):
 #        SMTP_USER + SMTP_PASS — Google Workspace address + app password
@@ -84,6 +86,9 @@ jobs:
           fi
           if [ -n "${{ secrets.TENOR_API_KEY }}" ]; then
             args+=("TENOR_API_KEY=${{ secrets.TENOR_API_KEY }}")
+          fi
+          if [ -n "${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+            args+=("SUPABASE_SERVICE_ROLE_KEY=${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}")
           fi
           flyctl secrets set --app "$APP" --stage "${args[@]}"
 

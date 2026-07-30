@@ -12,7 +12,18 @@ import {
   verifyPasswordResetToken,
 } from "@/lib/auth";
 import { appUrl, emailEnabled, passwordResetEmail, sendEmail } from "@/lib/email";
+import {
+  brandedAuthEmails,
+  sendBrandedRecoveryEmail,
+  sendBrandedSignupEmail,
+} from "@/lib/authEmails";
 import { supabaseEnabled, supabaseServer } from "@/lib/supabase";
+
+async function requestOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  return `${h.get("x-forwarded-proto") ?? "http"}://${host}`;
+}
 
 export type FormState = { error?: string; info?: string } | undefined;
 
@@ -27,6 +38,20 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
   }
 
   if (supabaseEnabled()) {
+    // Epic-branded confirmation via our own SMTP when configured — the
+    // shared Supabase project's stock templates carry Drip's branding.
+    if (brandedAuthEmails()) {
+      const sendError = await sendBrandedSignupEmail({
+        email,
+        password,
+        name,
+        origin: await requestOrigin(),
+        next,
+      });
+      if (sendError) return { error: sendError };
+      return { info: "Check your email — the confirmation link signs you straight in." };
+    }
+
     const supabase = await supabaseServer();
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -121,13 +146,17 @@ export async function requestPasswordReset(
   };
 
   if (supabaseEnabled()) {
-    const h = await headers();
-    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-    const proto = h.get("x-forwarded-proto") ?? "http";
+    const origin = await requestOrigin();
+    // Epic-branded recovery email via our own SMTP when configured;
+    // otherwise Supabase sends its (Drip-branded) stock recovery email.
+    if (brandedAuthEmails()) {
+      await sendBrandedRecoveryEmail({ email, origin });
+      return sent;
+    }
     const supabase = await supabaseServer();
     // Outcome deliberately ignored — same reply either way, no account leak.
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${proto}://${host}/auth/callback?next=/reset-password`,
+      redirectTo: `${origin}/auth/callback?next=/reset-password`,
     });
     return sent;
   }

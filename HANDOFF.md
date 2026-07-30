@@ -48,6 +48,16 @@ sign-in, and branded email all working.
   sha256 fingerprint of the current passwordHash, making it single-use
   (fingerprint dies when the hash changes). Guests excluded; response never
   reveals whether an email has an account.
+- **Branded auth emails** (src/lib/authEmails.ts): the shared Supabase
+  project's stock templates are Drip-branded, so when
+  SUPABASE_SERVICE_ROLE_KEY + SMTP are set, Epic mints auth links itself
+  (auth.admin.generateLink — returns the link, sends NOTHING) and emails
+  them via its own sender; /auth/confirm verifies the token_hash
+  (verifyOtp, signs the user in) and forwards to `next`. Covers signup,
+  guest claim, and password recovery. Without the key each flow falls back
+  to Supabase-sent (Drip-branded) emails. Send-failure rolls back the
+  just-created unconfirmed user so retries don't hit "already exists".
+  Drip's own templates/config untouched.
 - **Email**: Google Workspace SMTP (nodemailer, smtp.gmail.com:465).
   epicpickem.com is a *user alias domain* on the Drip Workspace org; sends as
   no_reply@epicpickem.com (send-as alias). SPF/DKIM/DMARC live at Squarespace
@@ -136,8 +146,13 @@ dynamic invite unfurls).
   edits apply to FUTURE nights only (running night edits live in its league
   admin — documented in UI); unclaimed guests appear once per night on the
   regulars wall (claiming merges them — by design, nudge copy exists).
-- Supabase auth-email polish: custom SMTP in project settings + neutral
-  templates (today Epic signups get Drip-branded confirmation emails).
+- Drip-branded auth emails: FIXED in code (see Branded auth emails above)
+  but needs the owner to add the GH secret PROD_SUPABASE_SERVICE_ROLE_KEY
+  (Supabase dashboard → Settings → API → service_role) and run a prod
+  deploy — until then flows fall back to Drip-branded Supabase sends.
+  Optional: STAGING_SUPABASE_SERVICE_ROLE_KEY for staging (same key,
+  shared project). Then verify: signup + forgot-password emails arrive
+  from no_reply@epicpickem.com with Epic branding, links sign in.
 - Supabase Realtime chat (polling MVP today), H2H compare, season champion
   card, brackets, Yahoo import, Expo native app, PostHog analytics.
 - Picks aren't location-rechecked after joining a geofenced league (join

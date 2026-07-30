@@ -134,6 +134,23 @@ export function inviteEmail(input: {
   };
 }
 
+export function confirmSignupEmail(input: {
+  name: string;
+  confirmUrl: string;
+}): { subject: string; html: string } {
+  return {
+    subject: "Confirm your email for Epic Pick'em",
+    html: shell(
+      `<p>Hi ${input.name} — one tap and your Epic Pick'em account is live.
+       Pick winners, talk trash, climb the standings.</p>
+       ${button(input.confirmUrl, "Confirm my email")}
+       <p style="color:#94a3b8;font-size:13px;margin-top:16px">Or paste this link
+       in your browser:<br>${input.confirmUrl}</p>`,
+      "Didn't sign up for Epic Pick'em? Ignore this and the account stays inactive."
+    ),
+  };
+}
+
 export function passwordResetEmail(input: {
   name: string;
   resetUrl: string;

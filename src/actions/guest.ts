@@ -2,9 +2,11 @@
 
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { createSession, getCurrentUser } from "@/lib/auth";
+import { brandedAuthEmails, sendBrandedSignupEmail } from "@/lib/authEmails";
 import { venueCheckError } from "@/lib/geo";
 import { supabaseEnabled, supabaseServer } from "@/lib/supabase";
 
@@ -83,6 +85,25 @@ export async function claimAccount(
   if (password.length < 8) return { error: "Password needs at least 8 characters." };
 
   if (supabaseEnabled()) {
+    // Epic-branded confirmation via our own SMTP when configured — the
+    // shared Supabase project's stock templates carry Drip's branding.
+    if (brandedAuthEmails()) {
+      const h = await headers();
+      const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+      const sendError = await sendBrandedSignupEmail({
+        email,
+        password,
+        name: me.name,
+        origin: `${h.get("x-forwarded-proto") ?? "http"}://${host}`,
+        next: "/dashboard?claimed=1",
+      });
+      if (sendError) return { error: sendError };
+      await db.user.update({ where: { id: me.id }, data: { claimEmail: email } });
+      return {
+        info: "Check your email — the confirmation link signs you in and your picks come along.",
+      };
+    }
+
     const supabase = await supabaseServer();
     const { data, error } = await supabase.auth.signUp({
       email,
