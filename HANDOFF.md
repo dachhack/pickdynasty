@@ -83,7 +83,16 @@ week sweeps all sports, batched 4-at-a-time — ESPN 503s on a 13-league
 burst). Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
 quick-join (JWT cookie), venue geofence (haversine + 75m grace, deterrent
 not proof), public /tv/<code> leaderboard with join QR, account claim
-(email/password or Google; adoptGuestAccounts merges). Player: share cards
+(email/password or Google; adoptGuestAccounts merges). Venue tier v2:
+Venue model groups recurring nights (each night = a League via
+League.venueId, fresh invite code), promoted from league admin ("make
+this a recurring venue"); host console /venues/[id] (start tonight's game
+clones last night's settings + venue geofence, night history with per-night
+winners, settings); cross-night "bar regulars" board (src/lib/venue.ts,
+aggregates by USER so claimed guests keep records; night wins → points;
+attendance tiers 3🍻/6🔥/10👑); permanent TV board /tv/venue/<venueCode>
+(auto-features newest night + join QR + regulars wall — the bar bookmarks
+ONE url). Player: share cards
 (/api/leagues/[id]/card/[slateId], Web Share API), trophy case. HQ
 (super admin, mlporritt@gmail.com via SUPER_ADMIN_EMAILS): stats, feed
 health, curated pick packs, league/user admin, global sync. Brand:
@@ -115,8 +124,10 @@ dynamic invite unfurls).
 
 ## Known gaps / backlog
 
-- Venue tier v2: recurring event nights + cross-night "bar regulars"
-  leaderboard (NEXT UP — designed in chat, not started).
+- Venue tier v2 follow-ups: no venue delete/transfer UI yet; venue geofence
+  edits apply to FUTURE nights only (running night edits live in its league
+  admin — documented in UI); unclaimed guests appear once per night on the
+  regulars wall (claiming merges them — by design, nudge copy exists).
 - Supabase auth-email polish: custom SMTP in project settings + neutral
   templates (today Epic signups get Drip-branded confirmation emails).
 - Supabase Realtime chat (polling MVP today), H2H compare, season champion

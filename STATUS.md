@@ -18,7 +18,7 @@ Bursts when owner has time — recent pace was daily; assume weekly minimum unti
 
 ## Last worked
 
-2026-07-30 — Feature burst on top of the live launch: trophy-check brand (logo, favicons, PWA icons, header), OG share cards (static site card + dynamic league-invite unfurls), Top 25 CFB rule pack (fills when the AP poll drops mid-August), cross-sport week window in the slate builder, player share cards + trophy case, commissioner chat pins + league notes. All on main, awaiting one Deploy production run.
+2026-07-30 — Venue tier v2 shipped: recurring event nights (Venue model; each night is its own league; one-tap "start tonight's game" clones settings + geofence), cross-night "bar regulars" leaderboard with attendance tiers (🍻 Regular / 🔥 Diehard / 👑 Legend), and a permanent per-venue TV board (/tv/venue/<code>) the bar bookmarks once. Includes one hand-written migration (Venue table + League.venueId). Verified E2E locally (promote league → venue, start next night, regulars aggregation, TV board). On main with the earlier feature batch, awaiting one Deploy production run.
 
 ## Current blockers
 
@@ -26,6 +26,6 @@ Bursts when owner has time — recent pace was daily; assume weekly minimum unti
 
 ## Next 3 tasks
 
-1. Post-deploy spot check: share a result card from a phone, pin a chat message, confirm the Top 25 pack fills once the preseason AP poll lands (~mid-August).
+1. Post-deploy spot check: promote a league to a venue and run a night for real; share a result card from a phone; confirm the Top 25 pack fills once the preseason AP poll lands (~mid-August).
 2. Supabase project polish: custom SMTP for auth emails + brand-neutral templates; tighten DMARC to quarantine after a few clean weeks.
-3. Venue tier v2: recurring event nights + cross-night "bar regulars" leaderboard.
+3. Venue polish: venue delete/transfer UI, and consider surfacing the regulars wall inside each night's league page.

@@ -62,6 +62,10 @@ export async function adoptGuestAccounts(user: { id: string; email: string }) {
       where: { createdById: guest.id },
       data: { createdById: user.id },
     });
+    await db.venue.updateMany({
+      where: { createdById: guest.id },
+      data: { createdById: user.id },
+    });
     await db.user.delete({ where: { id: guest.id } });
   }
 }

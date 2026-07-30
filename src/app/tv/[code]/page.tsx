@@ -49,6 +49,9 @@ export default async function TvPage({
   const league = await loadLeagueForStandings(found.id);
   const standings = computeStandingsFrom(league);
   const meta = formatMeta(league.format);
+  const venue = found.venueId
+    ? await db.venue.findUnique({ where: { id: found.venueId } })
+    : null;
 
   // Featured slate: live drama first, then one still open for picks,
   // then the most recent final.
@@ -189,6 +192,14 @@ export default async function TvPage({
       </div>
 
       <p className="text-center text-sm text-slate-600">
+        {venue && (
+          <>
+            <a href={`/tv/venue/${venue.code}`} className="hover:text-slate-400">
+              {venue.emoji} One night at {venue.name} — all-time regulars on the venue board
+            </a>
+            {" · "}
+          </>
+        )}
         Board refreshes automatically · ⚡ Epic Pick&rsquo;em
       </p>
     </div>

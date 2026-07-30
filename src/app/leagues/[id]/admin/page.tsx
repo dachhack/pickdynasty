@@ -12,6 +12,7 @@ import {
 } from "@/actions/admin";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
 import LocationField from "@/components/LocationField";
+import { createVenue } from "@/actions/venues";
 import { linkFantasyLeague, unlinkFantasyLeague } from "@/actions/fantasy";
 import { sendInviteEmails } from "@/actions/emails";
 import { emailEnabled } from "@/lib/email";
@@ -39,13 +40,16 @@ export default async function AdminPage({
   const me = await requireCommissioner(id);
   const { league } = me;
 
-  const [members, fantasyLink] = await Promise.all([
+  const [members, fantasyLink, venue] = await Promise.all([
     db.membership.findMany({
       where: { leagueId: id },
       include: { user: true },
       orderBy: { createdAt: "asc" },
     }),
     db.fantasyLink.findUnique({ where: { leagueId: id } }),
+    league.venueId
+      ? db.venue.findUnique({ where: { id: league.venueId } })
+      : Promise.resolve(null),
   ]);
 
   const h = await headers();
@@ -186,6 +190,48 @@ export default async function AdminPage({
             </div>
           </div>
         )}
+        <div className="mt-4 border-t border-slate-800 pt-4">
+          {venue ? (
+            <>
+              <p className="text-sm font-semibold">
+                🍻 Part of {venue.emoji} {venue.name}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                This league is one night of a recurring venue — players carry their
+                record onto the cross-night regulars board. The venue&rsquo;s permanent TV
+                link below survives from night to night.
+              </p>
+              <div className="mt-2">
+                <CopyField value={`${proto}://${host}/tv/venue/${venue.code}`} />
+              </div>
+              {venue.createdById === me.userId && (
+                <Link href={`/venues/${venue.id}`} className="btn mt-3 inline-flex !text-sm">
+                  Open venue console
+                </Link>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold">🍻 Make this a recurring venue</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Same bar every week? A venue gives you one-tap &ldquo;start tonight&rsquo;s
+                game&rdquo;, an all-time <em>bar regulars</em> leaderboard across nights, and
+                a permanent TV link you never have to update.
+              </p>
+              <form action={createVenue} className="mt-3 flex flex-wrap gap-2">
+                <input type="hidden" name="leagueId" value={id} />
+                <input
+                  className="input sm:max-w-xs"
+                  name="name"
+                  maxLength={60}
+                  placeholder="Venue name — e.g. Murphy's Taproom"
+                  defaultValue={league.name}
+                />
+                <button className="btn !text-sm">Create venue</button>
+              </form>
+            </>
+          )}
+        </div>
       </section>
 
       <section className="card">

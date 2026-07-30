@@ -35,8 +35,31 @@ model User {
   createdAt    DateTime     @default(now())
   memberships  Membership[]
   leagues      League[]     @relation("LeagueCreator")
+  venues       Venue[]      @relation("VenueHost")
 
   @@index([claimEmail])
+}
+
+// 🍻 Venue tier v2: a bar/venue that runs RECURRING event nights. Each night
+// is its own League (linked via League.venueId, fresh invite code every
+// time); the venue carries the stable public code for the bookmarkable TV
+// board (/tv/venue/<code>) and the saved geofence copied into each night.
+// Cross-night "bar regulars" standings are computed in src/lib/venue.ts.
+model Venue {
+  id              String   @id @default(cuid())
+  name            String
+  emoji           String   @default("🍺")
+  // Stable public code (invite-code alphabet) — nights rotate codes, this doesn't.
+  code            String   @unique
+  createdById     String
+  createdBy       User     @relation("VenueHost", fields: [createdById], references: [id])
+  // Saved venue geofence, stamped onto every new night at creation time.
+  requireLocation Boolean  @default(false)
+  venueLat        Float?
+  venueLng        Float?
+  venueRadiusM    Int      @default(150)
+  createdAt       DateTime @default(now())
+  leagues         League[]
 }
 
 model League {
@@ -66,6 +89,9 @@ model League {
   venueLat    Float?
   venueLng    Float?
   venueRadiusM Int         @default(150)
+  // Set when this league is one night of a recurring venue (see Venue).
+  venueId     String?
+  venue       Venue?       @relation(fields: [venueId], references: [id], onDelete: SetNull)
   createdById String
   createdBy   User         @relation("LeagueCreator", fields: [createdById], references: [id])
   createdAt   DateTime     @default(now())
@@ -74,6 +100,8 @@ model League {
   moneyEntries MoneyEntry[]
   fantasyLink FantasyLink?
   messages    Message[]
+
+  @@index([venueId])
 }
 
 // Connects a pick'em league to a Sleeper or ESPN fantasy league so

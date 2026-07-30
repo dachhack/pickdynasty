@@ -14,11 +14,18 @@ export default async function DashboardPage({
   if (!user) redirect("/login");
   const { error, claimed } = await searchParams;
 
-  const memberships = await db.membership.findMany({
-    where: { userId: user.id },
-    include: { league: { include: { memberships: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [memberships, venues] = await Promise.all([
+    db.membership.findMany({
+      where: { userId: user.id },
+      include: { league: { include: { memberships: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.venue.findMany({
+      where: { createdById: user.id },
+      include: { leagues: { select: { id: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -43,6 +50,27 @@ export default async function DashboardPage({
         <p className="rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
           That invite code didn&rsquo;t match any league. Double-check it and try again.
         </p>
+      )}
+
+      {venues.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            🍻 Venues you host
+          </h2>
+          <div className="mt-2 grid gap-4 sm:grid-cols-2">
+            {venues.map((v) => (
+              <Link key={v.id} href={`/venues/${v.id}`} className="card transition hover:border-indigo-600">
+                <h3 className="font-bold">
+                  {v.emoji} {v.name}
+                </h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  {v.leagues.length} {v.leagues.length === 1 ? "night" : "nights"} · start
+                  tonight&rsquo;s game, regulars board, TV link
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       {memberships.length === 0 ? (
