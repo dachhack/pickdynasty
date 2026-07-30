@@ -49,8 +49,9 @@ sign-in, and branded email all working.
   (fingerprint dies when the hash changes). Guests excluded; response never
   reveals whether an email has an account.
 - **Branded auth emails** (src/lib/authEmails.ts): the shared Supabase
-  project's stock templates are Drip-branded, so when
-  SUPABASE_SERVICE_ROLE_KEY + SMTP are set, Epic mints auth links itself
+  project's stock templates are Drip-branded, so when SUPABASE_SECRET_KEY
+  (an sb_secret_... API key; legacy service_role JWT accepted via
+  SUPABASE_SERVICE_ROLE_KEY) + SMTP are set, Epic mints auth links itself
   (auth.admin.generateLink — returns the link, sends NOTHING) and emails
   them via its own sender; /auth/confirm verifies the token_hash
   (verifyOtp, signs the user in) and forwards to `next`. Covers signup,
@@ -147,12 +148,17 @@ dynamic invite unfurls).
   admin — documented in UI); unclaimed guests appear once per night on the
   regulars wall (claiming merges them — by design, nudge copy exists).
 - Drip-branded auth emails: FIXED in code (see Branded auth emails above)
-  but needs the owner to add the GH secret PROD_SUPABASE_SERVICE_ROLE_KEY
-  (Supabase dashboard → Settings → API → service_role) and run a prod
-  deploy — until then flows fall back to Drip-branded Supabase sends.
-  Optional: STAGING_SUPABASE_SERVICE_ROLE_KEY for staging (same key,
-  shared project). Then verify: signup + forgot-password emails arrive
-  from no_reply@epicpickem.com with Epic branding, links sign in.
+  but needs the owner to add the GH secret PROD_SUPABASE_SECRET_KEY —
+  create an sb_secret_... key in the Supabase dashboard (Settings → API
+  Keys → "Create new secret key", name it e.g. epicpickem-prod) — and run
+  a prod deploy; until then flows fall back to Drip-branded Supabase
+  sends. Optional: STAGING_SUPABASE_SECRET_KEY (mint a separate key so
+  either can be revoked alone; shared project). Then verify: signup +
+  forgot-password emails arrive from no_reply@epicpickem.com with Epic
+  branding, links sign in. Caveat from Supabase docs: sb_secret keys had
+  auth.admin issues only on SELF-HOSTED/local stacks — hosted (ours) is
+  fine; if generateLink ever 401s, the legacy service_role JWT still works
+  via the same env var.
 - Supabase Realtime chat (polling MVP today), H2H compare, season champion
   card, brackets, Yahoo import, Expo native app, PostHog analytics.
 - Picks aren't location-rechecked after joining a geofenced league (join

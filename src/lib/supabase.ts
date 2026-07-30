@@ -15,22 +15,27 @@ export function supabaseEnabled(): boolean {
 }
 
 /**
- * Admin (service-role) client — needed to mint auth links ourselves via
+ * Admin client — needed to mint auth links ourselves via
  * auth.admin.generateLink so Epic can send its OWN branded auth emails
  * instead of the shared project's Drip-branded ones (generateLink returns
- * the link without sending anything). Set SUPABASE_SERVICE_ROLE_KEY to
- * enable; without it, auth flows fall back to Supabase-sent emails.
+ * the link without sending anything). Set SUPABASE_SECRET_KEY (an
+ * sb_secret_... key from the dashboard — preferred: individually revocable,
+ * survives JWT-secret rotation) to enable; the legacy service_role JWT via
+ * SUPABASE_SERVICE_ROLE_KEY still works as an alias. Without either, auth
+ * flows fall back to Supabase-sent emails.
  */
+function supabaseAdminKey(): string | undefined {
+  return process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
 export function supabaseAdminEnabled(): boolean {
-  return supabaseEnabled() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return supabaseEnabled() && Boolean(supabaseAdminKey());
 }
 
 export function supabaseAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, supabaseAdminKey()!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 }
 
 export async function supabaseServer() {

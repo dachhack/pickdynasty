@@ -15,7 +15,9 @@
 #        PROD_SUPABASE_URL + PROD_SUPABASE_ANON_KEY
 #      Recommended with those (Epic-branded auth emails instead of the shared
 #      project's Drip-branded Supabase templates; needs SMTP_* too):
-#        PROD_SUPABASE_SERVICE_ROLE_KEY  (Supabase dashboard → Settings → API)
+#        PROD_SUPABASE_SECRET_KEY  (sb_secret_... — dashboard → Settings →
+#        API Keys → "Create new secret key"; the legacy service_role JWT
+#        works too, as PROD_SUPABASE_SERVICE_ROLE_KEY)
 #      Shared with staging (already set if you configured them):
 #        GIPHY_API_KEY, SMTP_USER, SMTP_PASS, EMAIL_FROM
 #   4. Actions tab → "Deploy production (Fly)" → Run workflow.
@@ -72,7 +74,9 @@ jobs:
           if [ -n "${{ secrets.EMAIL_FROM }}" ]; then
             args+=("EMAIL_FROM=${{ secrets.EMAIL_FROM }}")
           fi
-          if [ -n "${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}" ]; then
+          if [ -n "${{ secrets.PROD_SUPABASE_SECRET_KEY }}" ]; then
+            args+=("SUPABASE_SECRET_KEY=${{ secrets.PROD_SUPABASE_SECRET_KEY }}")
+          elif [ -n "${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}" ]; then
             args+=("SUPABASE_SERVICE_ROLE_KEY=${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}")
           fi
           flyctl secrets set --app "$APP" --stage "${args[@]}"
