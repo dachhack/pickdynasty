@@ -184,6 +184,82 @@ export function usedSurvivorTeams(
   return used;
 }
 
+// ---------------- Per-slate scores (share cards + weekly-win trophies) ----------------
+
+export type SlateScore = { membershipId: string; points: number; correct: number; decided: number };
+
+/** Every member's score on ONE slate, format-aware. */
+export function slateScores(league: LeagueForStandings, slateId: string): SlateScore[] {
+  const slate = league.slates.find((s) => s.id === slateId);
+  if (!slate) return [];
+  return league.memberships.map((m) => {
+    let points = 0;
+    let correct = 0;
+    let decided = 0;
+    for (const g of slate.games) {
+      const p = g.picks.find((p) => p.membershipId === m.id);
+      if (!p || !g.winner || g.winner === "TIE") continue;
+      decided++;
+      if (p.choice === g.winner) {
+        correct++;
+        points += league.format === "confidence" ? (p.confidence ?? 1) : 1;
+      }
+    }
+    return { membershipId: m.id, points, correct, decided };
+  });
+}
+
+// ---------------- Trophy case ----------------
+
+export type TrophyCase = {
+  weeklyWins: number; // best score on a fully-final slate (ties count)
+  perfectSlates: number; // every pick right, 3+ decided
+  bestStreak: number; // longest-ever run of consecutive correct picks
+  currentStreak: number;
+  seasonRank: number; // 1-based position in current standings
+  players: number;
+};
+
+export function computeTrophyCase(
+  league: LeagueForStandings,
+  membershipId: string
+): TrophyCase {
+  let weeklyWins = 0;
+  let perfectSlates = 0;
+  for (const slate of league.slates) {
+    if (slate.games.length === 0 || !slate.games.every((g) => g.winner)) continue;
+    const scores = slateScores(league, slate.id);
+    const best = Math.max(...scores.map((s) => s.points), 0);
+    const mine = scores.find((s) => s.membershipId === membershipId);
+    if (mine && best > 0 && mine.points === best) weeklyWins++;
+    if (mine && mine.decided >= 3 && mine.correct === mine.decided) perfectSlates++;
+  }
+
+  // Streaks across all decided games in play order (unpicked games skip).
+  const decided = league.slates
+    .flatMap((s) => s.games)
+    .filter((g) => g.winner && g.winner !== "TIE")
+    .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  let bestStreak = 0;
+  let run = 0;
+  for (const g of decided) {
+    const p = g.picks.find((p) => p.membershipId === membershipId);
+    if (!p) continue;
+    if (p.choice === g.winner) {
+      run++;
+      bestStreak = Math.max(bestStreak, run);
+    } else {
+      run = 0;
+    }
+  }
+
+  const standings = computeStandingsFrom(league);
+  const seasonRank = standings.findIndex((r) => r.membershipId === membershipId) + 1;
+  const currentStreak = standings.find((r) => r.membershipId === membershipId)?.streak ?? 0;
+
+  return { weeklyWins, perfectSlates, bestStreak, currentStreak, seasonRank, players: standings.length };
+}
+
 // ---------------- Rank movement (▲2 / ▼1 since the last final slate) ----------------
 
 /**

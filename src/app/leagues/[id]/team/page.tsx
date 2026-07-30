@@ -1,5 +1,10 @@
-import { requireMembership } from "@/lib/league";
+import {
+  computeTrophyCase,
+  loadLeagueForStandings,
+  requireMembership,
+} from "@/lib/league";
 import { updateTeam } from "@/actions/leagues";
+import ShareCardButton from "@/components/ShareCardButton";
 
 const PRESET_COLORS = [
   "#4f46e5", "#dc2626", "#16a34a", "#d97706", "#0891b2",
@@ -16,6 +21,22 @@ export default async function TeamPage({
   const { id } = await params;
   const { saved } = await searchParams;
   const membership = await requireMembership(id);
+  const league = await loadLeagueForStandings(id);
+  const trophies = computeTrophyCase(league, membership.id);
+  const latestFinal = [...league.slates]
+    .reverse()
+    .find((s) => s.games.length > 0 && s.games.every((g) => g.winner));
+
+  const shelf = [
+    { emoji: "🥇", value: trophies.weeklyWins, label: "slate wins" },
+    { emoji: "💯", value: trophies.perfectSlates, label: "perfect slates" },
+    { emoji: "🔥", value: trophies.bestStreak, label: "best streak" },
+    {
+      emoji: trophies.seasonRank === 1 ? "👑" : "📈",
+      value: trophies.seasonRank > 0 ? `#${trophies.seasonRank}` : "—",
+      label: `of ${trophies.players} this season`,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-lg">
@@ -26,6 +47,27 @@ export default async function TeamPage({
         </p>
         <p className="text-xs text-slate-500">This is how you appear in standings and picks.</p>
       </div>
+
+      <section className="card mt-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-bold">🏆 Trophy case</h2>
+          {latestFinal && <ShareCardButton leagueId={id} slateId={latestFinal.id} label="📸 Share my latest" />}
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+          {shelf.map((t) => (
+            <div key={t.label} className="rounded-lg border border-slate-800 py-3">
+              <p className="text-2xl">{t.emoji}</p>
+              <p className="mt-1 text-xl font-black">{t.value}</p>
+              <p className="text-xs text-slate-500">{t.label}</p>
+            </div>
+          ))}
+        </div>
+        {trophies.currentStreak >= 3 && (
+          <p className="mt-3 rounded-lg border border-orange-900 bg-orange-950/40 px-3 py-2 text-sm text-orange-300">
+            🔥 You&rsquo;re riding a {trophies.currentStreak}-pick heater right now.
+          </p>
+        )}
+      </section>
 
       {saved && (
         <p className="mt-4 rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">

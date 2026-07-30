@@ -8,6 +8,7 @@ import {
 import { formatMeta } from "@/lib/formats";
 import { REACTION_EMOJIS } from "@/lib/reactions";
 import RecapReactions, { type ReactionView } from "@/components/RecapReactions";
+import ShareCardButton from "@/components/ShareCardButton";
 
 export default async function LeagueHome({
   params,
@@ -137,7 +138,10 @@ export default async function LeagueHome({
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">📰 Recaps</h2>
           {recaps.map((r) => (
             <div key={r.slateId} className="card !py-4">
-              <h3 className="font-bold">{r.slateName}</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-bold">{r.slateName}</h3>
+                <ShareCardButton leagueId={id} slateId={r.slateId} />
+              </div>
               <ul className="mt-1 flex flex-col gap-1 text-sm text-slate-300">
                 {r.lines.map((line, i) => (
                   <li key={i}>{line}</li>
