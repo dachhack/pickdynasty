@@ -1,9 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { getCurrentUser } from "@/lib/auth";
+import { parseTheme } from "@/lib/theme";
 import { userIsSuperAdmin } from "@/lib/superadmin";
 import { logout } from "@/actions/auth";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "Epic Pick'em — Pick'em Leagues With Friends",
@@ -32,16 +35,30 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Epic Pick'em", statusBarStyle: "black-translucent" },
 };
 
-export const viewport: Viewport = {
-  themeColor: "#0b1120",
-};
+const LIGHT_BG = "#eef2f7"; // keep in sync with --background in globals.css
+const DARK_BG = "#0b1120";
+
+export async function generateViewport(): Promise<Viewport> {
+  const theme = parseTheme((await cookies()).get("ep_theme")?.value);
+  if (theme === "light") return { themeColor: LIGHT_BG };
+  if (theme === "system") {
+    return {
+      themeColor: [
+        { media: "(prefers-color-scheme: light)", color: LIGHT_BG },
+        { media: "(prefers-color-scheme: dark)", color: DARK_BG },
+      ],
+    };
+  }
+  return { themeColor: DARK_BG };
+}
 
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const user = await getCurrentUser();
+  const [user, store] = await Promise.all([getCurrentUser(), cookies()]);
+  const theme = parseTheme(store.get("ep_theme")?.value);
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" data-theme={theme} className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
@@ -53,7 +70,7 @@ export default async function RootLayout({
             <nav className="flex items-center gap-3 text-sm">
               {user ? (
                 <>
-                  <Link href="/dashboard" className="text-slate-300 hover:text-white">
+                  <Link href="/dashboard" className="text-slate-300 hover:text-slate-100">
                     My Leagues
                   </Link>
                   {userIsSuperAdmin(user) && (
@@ -73,7 +90,7 @@ export default async function RootLayout({
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="text-slate-300 hover:text-white">
+                  <Link href="/login" className="text-slate-300 hover:text-slate-100">
                     Log in
                   </Link>
                   <Link href="/signup" className="btn !px-3 !py-1.5 !text-xs">
@@ -81,6 +98,7 @@ export default async function RootLayout({
                   </Link>
                 </>
               )}
+              <ThemeToggle initial={theme} />
             </nav>
           </div>
         </header>

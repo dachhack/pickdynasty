@@ -51,7 +51,7 @@ export default async function LeagueLayout({
           <Link
             key={t.href}
             href={t.href}
-            className="whitespace-nowrap rounded-t-lg px-4 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-900 hover:text-white"
+            className="whitespace-nowrap rounded-t-lg px-4 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-900 hover:text-slate-100"
           >
             {t.label}
           </Link>

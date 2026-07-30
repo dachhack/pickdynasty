@@ -116,7 +116,13 @@ ONE url). Player: share cards
 (super admin, mlporritt@gmail.com via SUPER_ADMIN_EMAILS): stats, feed
 health, curated pick packs, league/user admin, global sync. Brand:
 trophy-check mark (public/icon.svg is the master), OG cards (static +
-dynamic invite unfurls).
+dynamic invite unfurls). Themes: dark (default) / light / match-device,
+cycled from the header toggle, persisted in the ep_theme cookie
+(per-device, works for guests, no flash — the root layout stamps
+<html data-theme>). Light mode works by overriding the --color-* vars
+Tailwind 4 utilities compile to (globals.css — the two override blocks
+must stay identical); avoid hover:text-white on neutral backgrounds, use
+hover:text-slate-100 (theme-safe) instead.
 
 ## Dev/test recipes (cloud container)
 

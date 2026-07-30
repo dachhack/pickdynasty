@@ -157,7 +157,7 @@ export default function ChatRoom({
                 <button
                   type="button"
                   onClick={() => onPin(m.id)}
-                  className="shrink-0 text-xs text-slate-500 hover:text-white"
+                  className="shrink-0 text-xs text-slate-500 hover:text-slate-100"
                   title="Unpin"
                 >
                   ✕

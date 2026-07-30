@@ -268,7 +268,7 @@ export default function SlateBuilder({
                   type="button"
                   onClick={() => setMode(m)}
                   className={`rounded-md px-3 py-1.5 capitalize ${
-                    mode === m ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
+                    mode === m ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-slate-100"
                   }`}
                 >
                   {m === "packs" ? "🎁 Packs" : m === "window" ? "🗓️ All sports" : `By ${m}`}
