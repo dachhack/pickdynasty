@@ -56,7 +56,11 @@ export default function AuthForm({
       </div>
       <p className="mt-4 text-center text-sm text-slate-400">
         {mode === "login" ? (
-          <>No account? <Link className="text-indigo-400 hover:underline" href="/signup">Sign up</Link></>
+          <>
+            No account? <Link className="text-indigo-400 hover:underline" href="/signup">Sign up</Link>
+            {" · "}
+            <Link className="text-indigo-400 hover:underline" href="/forgot-password">Forgot password?</Link>
+          </>
         ) : (
           <>Already have an account? <Link className="text-indigo-400 hover:underline" href="/login">Log in</Link></>
         )}

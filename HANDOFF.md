@@ -39,7 +39,15 @@ sign-in, and branded email all working.
   present, self-contained JWT cookie (`ep_session`) otherwise — AND the JWT
   cookie is always checked as fallback (bar-night guests ride it in prod).
   Google OAuth via Supabase PKCE (/auth/callback; guest claim absorbs the
-  device's guest account).
+  device's guest account). Forgot password (/forgot-password →
+  /reset-password): Supabase driver uses resetPasswordForEmail with
+  redirectTo /auth/callback?next=/reset-password (the OAuth callback doubles
+  as the recovery landing — that URL must stay in the Supabase project's
+  allowed redirect list, same entry OAuth already needs), then
+  auth.updateUser; local driver emails a 30-min signed JWT that embeds a
+  sha256 fingerprint of the current passwordHash, making it single-use
+  (fingerprint dies when the hash changes). Guests excluded; response never
+  reveals whether an email has an account.
 - **Email**: Google Workspace SMTP (nodemailer, smtp.gmail.com:465).
   epicpickem.com is a *user alias domain* on the Drip Workspace org; sends as
   no_reply@epicpickem.com (send-as alias). SPF/DKIM/DMARC live at Squarespace

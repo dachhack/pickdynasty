@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { createHash } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { cache } from "react";
 import { db } from "./db";
@@ -81,6 +82,44 @@ async function mirrorSupabaseUser(id: string, email: string, name: string) {
   });
   await adoptGuestAccounts(created);
   return created;
+}
+
+// ---------- Password reset tokens (local JWT auth driver only) ----------
+// Supabase users reset through Supabase's own recovery email; these signed
+// tokens are for User.passwordHash accounts. Embedding a fingerprint of the
+// CURRENT hash makes each token single-use: once the password changes, the
+// fingerprint no longer matches and the token is dead.
+
+const passwordFingerprint = (passwordHash: string | null) =>
+  createHash("sha256").update(passwordHash ?? "none").digest("hex").slice(0, 16);
+
+export async function makePasswordResetToken(user: {
+  id: string;
+  passwordHash: string | null;
+}): Promise<string> {
+  return new SignJWT({
+    sub: user.id,
+    purpose: "pwreset",
+    ph: passwordFingerprint(user.passwordHash),
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("30m")
+    .sign(secret());
+}
+
+/** The account a valid, unexpired, unused reset token belongs to — else null. */
+export async function verifyPasswordResetToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    if (payload.purpose !== "pwreset" || !payload.sub) return null;
+    const user = await db.user.findUnique({ where: { id: payload.sub } });
+    if (!user || user.isGuest) return null;
+    if (payload.ph !== passwordFingerprint(user.passwordHash)) return null; // used
+    return user;
+  } catch {
+    return null;
+  }
 }
 
 /** The guest/dev JWT-cookie user, ignoring any Supabase session. Exported

@@ -4,7 +4,14 @@ import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { adoptGuestAccounts, createSession, destroySession } from "@/lib/auth";
+import {
+  adoptGuestAccounts,
+  createSession,
+  destroySession,
+  makePasswordResetToken,
+  verifyPasswordResetToken,
+} from "@/lib/auth";
+import { appUrl, emailEnabled, passwordResetEmail, sendEmail } from "@/lib/email";
 import { supabaseEnabled, supabaseServer } from "@/lib/supabase";
 
 export type FormState = { error?: string; info?: string } | undefined;
@@ -94,6 +101,91 @@ export async function signInWithGoogle(formData: FormData) {
   });
   if (error || !data.url) redirect("/login?error=oauth");
   redirect(data.url);
+}
+
+/**
+ * Forgot password, step 1: send a reset link. Supabase driver sends its own
+ * recovery email (which lands on /auth/callback → /reset-password with a
+ * session); the local driver emails a single-use 30-minute signed token.
+ * The response never reveals whether the email has an account.
+ */
+export async function requestPasswordReset(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "Enter a valid email address." };
+
+  const sent = {
+    info: "If that email has an account, a reset link is on its way. It works once and expires in 30 minutes.",
+  };
+
+  if (supabaseEnabled()) {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+    const proto = h.get("x-forwarded-proto") ?? "http";
+    const supabase = await supabaseServer();
+    // Outcome deliberately ignored — same reply either way, no account leak.
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${proto}://${host}/auth/callback?next=/reset-password`,
+    });
+    return sent;
+  }
+
+  if (!emailEnabled()) {
+    return {
+      error:
+        "Email sending isn't configured on this server — ask whoever runs it to reset your password.",
+    };
+  }
+  const user = await db.user.findUnique({ where: { email } });
+  if (user && !user.isGuest) {
+    const token = await makePasswordResetToken(user);
+    const msg = passwordResetEmail({
+      name: user.name,
+      resetUrl: `${appUrl()}/reset-password?token=${encodeURIComponent(token)}`,
+    });
+    await sendEmail({ to: email, ...msg });
+  }
+  return sent;
+}
+
+/**
+ * Forgot password, step 2: set the new password. Supabase driver relies on
+ * the recovery session established by /auth/callback; the local driver
+ * verifies the emailed token and signs the user in on success.
+ */
+export async function resetPassword(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) return { error: "Password needs at least 8 characters." };
+
+  if (supabaseEnabled()) {
+    const supabase = await supabaseServer();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { error: "This reset link expired or was already used — request a new one." };
+    }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+    redirect("/dashboard?pwreset=1");
+  }
+
+  const token = String(formData.get("token") ?? "");
+  const user = await verifyPasswordResetToken(token);
+  if (!user) {
+    return { error: "This reset link expired or was already used — request a new one." };
+  }
+  await db.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await bcrypt.hash(password, 10) },
+  });
+  await createSession(user.id);
+  redirect("/dashboard?pwreset=1");
 }
 
 export async function logout() {

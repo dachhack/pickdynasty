@@ -8,11 +8,11 @@ import { joinLeague } from "@/actions/leagues";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; claimed?: string }>;
+  searchParams: Promise<{ error?: string; claimed?: string; pwreset?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const { error, claimed } = await searchParams;
+  const { error, claimed, pwreset } = await searchParams;
 
   const [memberships, venues] = await Promise.all([
     db.membership.findMany({
@@ -34,6 +34,11 @@ export default async function DashboardPage({
         <Link href="/leagues/new" className="btn">+ New league</Link>
       </div>
 
+      {pwreset && (
+        <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+          🔐 Password updated — you&rsquo;re logged in.
+        </p>
+      )}
       {claimed && (
         <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
           🎉 Account claimed — your picks and leagues are yours on any device now.

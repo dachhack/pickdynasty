@@ -134,6 +134,23 @@ export function inviteEmail(input: {
   };
 }
 
+export function passwordResetEmail(input: {
+  name: string;
+  resetUrl: string;
+}): { subject: string; html: string } {
+  return {
+    subject: "Reset your Epic Pick'em password",
+    html: shell(
+      `<p>Hi ${input.name} — someone (hopefully you) asked to reset the password
+       for this Epic Pick'em account.</p>
+       ${button(input.resetUrl, "Choose a new password")}
+       <p style="color:#94a3b8;font-size:13px;margin-top:16px">The link works once
+       and expires in 30 minutes. Or paste it in your browser:<br>${input.resetUrl}</p>`,
+      "Didn't ask for this? Ignore it — your password stays unchanged."
+    ),
+  };
+}
+
 export function reminderEmail(input: {
   leagueName: string;
   slateName: string;
