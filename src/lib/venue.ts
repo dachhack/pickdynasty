@@ -38,6 +38,10 @@ export type NightSummary = {
   name: string;
   inviteCode: string;
   createdAt: Date;
+  // Scheduled date (League.eventAt, falling back to createdAt for legacy
+  // nights) — nights can be planned days ahead with slates pre-built.
+  eventAt: Date;
+  upcoming: boolean; // eventAt is in the future (computed here — render is pure)
   players: number;
   finished: boolean; // has games and every one is decided
   live: boolean; // has games, some undecided
@@ -46,8 +50,26 @@ export type NightSummary = {
 
 export type VenueBoard = {
   regulars: RegularRow[];
-  nights: NightSummary[]; // newest first
+  nights: NightSummary[]; // by event date, newest first
 };
+
+// A night stays "current" this long past its scheduled date — covers the
+// night itself plus games running past midnight.
+const NIGHT_CURRENT_WINDOW_MS = 30 * 60 * 60 * 1000;
+
+/**
+ * Which night the TV board features and the console calls current:
+ * tonight's (or the most recent within the 30h window), else the next
+ * planned one, else the most recent past night.
+ */
+export function pickCurrentNight(nights: NightSummary[]): NightSummary | null {
+  const now = Date.now();
+  const past = nights.filter((n) => n.eventAt.getTime() <= now); // newest first
+  const upcoming = [...nights].reverse().find((n) => n.eventAt.getTime() > now);
+  const recent = past[0] ?? null;
+  if (recent && now - recent.eventAt.getTime() < NIGHT_CURRENT_WINDOW_MS) return recent;
+  return upcoming ?? recent ?? nights[0] ?? null;
+}
 
 /**
  * One pass over every linked night: the all-time regulars board plus a
@@ -78,6 +100,8 @@ export async function computeVenueBoard(venueId: string): Promise<VenueBoard> {
       name: league.name,
       inviteCode: league.inviteCode,
       createdAt: league.createdAt,
+      eventAt: league.eventAt ?? league.createdAt,
+      upcoming: (league.eventAt ?? league.createdAt).getTime() > Date.now(),
       players: league.memberships.length,
       finished,
       live: games.length > 0 && !finished,
@@ -132,13 +156,6 @@ export async function computeVenueBoard(venueId: string): Promise<VenueBoard> {
       b.nights - a.nights ||
       a.teamName.localeCompare(b.teamName)
   );
-  return { regulars, nights: nights.reverse() };
-}
-
-/** The venue's newest night — what the TV board features and the QR joins. */
-export async function latestNight(venueId: string) {
-  return db.league.findFirst({
-    where: { venueId },
-    orderBy: { createdAt: "desc" },
-  });
+  nights.sort((a, b) => b.eventAt.getTime() - a.eventAt.getTime());
+  return { regulars, nights };
 }

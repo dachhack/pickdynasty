@@ -6,7 +6,7 @@ import {
   loadLeagueForStandings,
   slateStatus,
 } from "@/lib/league";
-import { computeVenueBoard, regularTier } from "@/lib/venue";
+import { computeVenueBoard, pickCurrentNight, regularTier } from "@/lib/venue";
 import { formatMeta } from "@/lib/formats";
 import AutoRefresh from "@/components/AutoRefresh";
 import TvTicker from "@/components/TvTicker";
@@ -43,8 +43,9 @@ export default async function VenueTvPage({
   }
 
   const { regulars, nights } = await computeVenueBoard(venue.id);
-  const tonight = nights[0]
-    ? await loadLeagueForStandings(nights[0].leagueId)
+  const currentNight = pickCurrentNight(nights);
+  const tonight = currentNight
+    ? await loadLeagueForStandings(currentNight.leagueId)
     : null;
   const standings = tonight ? computeStandingsFrom(tonight) : [];
   const meta = tonight ? formatMeta(tonight.format) : null;
@@ -83,9 +84,10 @@ export default async function VenueTvPage({
             <VenueMark venue={venue} className="h-14 w-14 text-5xl" /> {venue.name}
           </h1>
           <p className="mt-1 text-lg text-slate-400">
-            {tonight ? (
+            {tonight && currentNight ? (
               <>
-                Tonight: {tonight.name}
+                {currentNight.upcoming ? "Up next" : "Tonight"}:{" "}
+                {tonight.name}
                 {meta && <> · {meta.emoji} {meta.label}</>} · {standings.length}{" "}
                 {standings.length === 1 ? "player" : "players"} in
                 {tonight.requireLocation && " · 📍 venue-only entry"}

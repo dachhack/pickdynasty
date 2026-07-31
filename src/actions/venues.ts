@@ -105,16 +105,18 @@ export async function createVenue(formData: FormData) {
 }
 
 /**
- * Starts tonight's game: a fresh league (new invite code, empty slate list)
- * cloned from the venue's most recent night, stamped with the venue's saved
- * geofence. The caller becomes its commissioner.
+ * Creates one venue night for the given date: a fresh league (new invite
+ * code) cloned from the venue's most recent night (venue defaults when
+ * there is none), stamped with the venue's saved geofence. The caller
+ * becomes its commissioner.
  */
-export async function startNextNight(formData: FormData) {
-  const venueId = String(formData.get("venueId") ?? "");
-  const { user, venue } = await requireVenueHost(venueId);
-
+async function createNight(
+  venue: NonNullable<Awaited<ReturnType<typeof db.venue.findUnique>>>,
+  user: { id: string; name: string },
+  eventAt: Date
+) {
   const template = await db.league.findFirst({
-    where: { venueId },
+    where: { venueId: venue.id },
     orderBy: { createdAt: "desc" },
   });
   const myTeam = template
@@ -123,11 +125,11 @@ export async function startNextNight(formData: FormData) {
       })
     : null;
 
-  const league = await db.league.create({
+  return db.league.create({
     data: {
-      name: `${venue.name} · ${nightDateFmt.format(new Date())}`,
+      name: `${venue.name} · ${nightDateFmt.format(eventAt)}`,
       sport: template?.sport ?? venue.sport,
-      season: String(new Date().getFullYear()),
+      season: String(eventAt.getFullYear()),
       format: template?.format ?? venue.format,
       blindPicks: template?.blindPicks ?? true,
       adminCanSeePicks: template?.adminCanSeePicks ?? false,
@@ -140,6 +142,7 @@ export async function startNextNight(formData: FormData) {
       venueLng: venue.venueLng,
       venueRadiusM: venue.venueRadiusM,
       venueId: venue.id,
+      eventAt,
       createdById: user.id,
       memberships: {
         create: {
@@ -152,7 +155,33 @@ export async function startNextNight(formData: FormData) {
       },
     },
   });
-  // Straight to the slate builder — tonight's board needs games.
+}
+
+/** Starts tonight's game and heads straight to the slate builder. */
+export async function startNextNight(formData: FormData) {
+  const venueId = String(formData.get("venueId") ?? "");
+  const { user, venue } = await requireVenueHost(venueId);
+  const league = await createNight(venue, user, new Date());
+  redirect(`/leagues/${league.id}/admin/slates`);
+}
+
+/**
+ * Plans a FUTURE night so its slate can be built ahead of time. The TV
+ * board keeps featuring the right night day-of (see pickCurrentNight).
+ */
+export async function planNight(formData: FormData) {
+  const venueId = String(formData.get("venueId") ?? "");
+  const { user, venue } = await requireVenueHost(venueId);
+
+  // <input type="date"> gives yyyy-mm-dd; pin to ~noon ET so the date
+  // reads the same on either side of a DST switch.
+  const raw = String(formData.get("date") ?? "");
+  const eventAt = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T16:00:00Z`) : null;
+  if (!eventAt || Number.isNaN(eventAt.getTime())) {
+    redirect(`/venues/${venueId}?planError=1`);
+  }
+
+  const league = await createNight(venue, user, eventAt);
   redirect(`/leagues/${league.id}/admin/slates`);
 }
 

@@ -110,7 +110,10 @@ start nights from the console; "+ New venue" on dashboard, cross-link on
 /leagues/new) or promoted from league admin ("make this a recurring
 venue", which captures the league's sport/format as the venue defaults); host console /venues/[id] (start tonight's game
 clones last night's settings + venue geofence, night history with per-night
-winners, settings); cross-night "bar regulars" board (src/lib/venue.ts,
+winners, settings; nights can be PLANNED AHEAD with a date — League.eventAt
+— so slates get built early; pickCurrentNight in lib/venue.ts decides what
+the TV features: most recent night within a 30h window, else next planned,
+else last past); cross-night "bar regulars" board (src/lib/venue.ts,
 aggregates by USER so claimed guests keep records; night wins → points;
 attendance tiers 3🍻/6🔥/10👑); permanent TV board /tv/venue/<venueCode>
 (auto-features newest night + join QR + regulars wall — the bar bookmarks

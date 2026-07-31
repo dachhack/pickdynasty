@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { computeVenueBoard, regularTier } from "@/lib/venue";
+import { computeVenueBoard, pickCurrentNight, regularTier } from "@/lib/venue";
 import {
   deleteVenue,
+  planNight,
   removeVenueLogo,
   startNextNight,
   updateVenue,
@@ -32,17 +33,23 @@ export default async function VenuePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; created?: string; logoError?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    created?: string;
+    logoError?: string;
+    planError?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { saved, created, logoError } = await searchParams;
+  const { saved, created, logoError, planError } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const venue = await db.venue.findUnique({ where: { id } });
   if (!venue || venue.createdById !== user.id) redirect("/dashboard");
 
   const { regulars, nights } = await computeVenueBoard(id);
-  const currentNight = nights.find((n) => !n.finished) ?? null;
+  const currentNight = pickCurrentNight(nights);
+  
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -74,14 +81,26 @@ export default async function VenuePage({
       </div>
 
       <section className="card">
-        <h2 className="font-bold">🌙 Tonight</h2>
+        <h2 className="font-bold">🌙 Game nights</h2>
         {currentNight ? (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 p-3">
             <div>
-              <p className="font-semibold">{currentNight.name}</p>
+              <p className="font-semibold">
+                {currentNight.upcoming && (
+                  <span className="mr-2 rounded-full bg-indigo-950 px-2 py-0.5 text-xs font-semibold text-indigo-300">
+                    🗓️ Up next
+                  </span>
+                )}
+                {currentNight.name}
+              </p>
               <p className="text-xs text-slate-500">
                 {currentNight.players} {currentNight.players === 1 ? "player" : "players"} in ·{" "}
-                {currentNight.live ? "🔴 games on the board" : "🟢 gathering players"}
+                {currentNight.live
+                  ? "🔴 games on the board"
+                  : currentNight.finished
+                    ? "✅ final"
+                    : "🟢 gathering players"}{" "}
+                · this is what the TV board features
               </p>
             </div>
             <div className="flex gap-2">
@@ -98,14 +117,34 @@ export default async function VenuePage({
           </div>
         ) : (
           <p className="mt-1 text-sm text-slate-400">
-            No night running. Starting one creates a fresh game (new join code) with the
-            same format and settings as last time — regulars carry over automatically.
+            No nights yet. Each night is a fresh game (new join code) cloned from the last
+            one — regulars carry over automatically.
           </p>
         )}
-        <form action={startNextNight} className="mt-4">
-          <input type="hidden" name="venueId" value={id} />
-          <button className="btn">🍻 Start {currentNight ? "another" : "tonight's"} game</button>
-        </form>
+        {planError && (
+          <p className="mt-3 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+            Pick a date for the night first.
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3">
+          <form action={startNextNight}>
+            <input type="hidden" name="venueId" value={id} />
+            <button className="btn">🍻 Start tonight&rsquo;s game</button>
+          </form>
+          <form action={planNight} className="flex items-end gap-2">
+            <input type="hidden" name="venueId" value={id} />
+            <div>
+              <label className="label" htmlFor="date">Or plan ahead</label>
+              <input className="input" type="date" id="date" name="date" required />
+            </div>
+            <button className="btn-ghost">🗓️ Plan night</button>
+          </form>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Planning a night creates its board now so you can build the slate early — the TV
+          switches to it on the day, and early birds can scan in and pick as soon as games
+          are on it.
+        </p>
       </section>
 
       <section className="card">
@@ -190,7 +229,7 @@ export default async function VenuePage({
                       {n.name}
                     </Link>
                     <p className="text-xs text-slate-500">
-                      {nightFmt.format(n.createdAt)} · {n.players}{" "}
+                      {nightFmt.format(n.eventAt)} · {n.players}{" "}
                       {n.players === 1 ? "player" : "players"}
                     </p>
                   </td>
@@ -203,6 +242,8 @@ export default async function VenuePage({
                       )
                     ) : n.live ? (
                       <span className="text-amber-300">🔴 In progress</span>
+                    ) : n.upcoming ? (
+                      <span className="text-indigo-300">🗓️ Planned</span>
                     ) : (
                       <span className="text-emerald-300">🟢 Open</span>
                     )}

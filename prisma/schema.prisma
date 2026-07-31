@@ -103,6 +103,10 @@ model League {
   // Set when this league is one night of a recurring venue (see Venue).
   venueId     String?
   venue       Venue?       @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  // Scheduled date of a venue night (nights can be planned ahead with
+  // their slates pre-built). Null on non-venue leagues and legacy nights —
+  // readers fall back to createdAt.
+  eventAt     DateTime?
   createdById String
   createdBy   User         @relation("LeagueCreator", fields: [createdById], references: [id])
   createdAt   DateTime     @default(now())
