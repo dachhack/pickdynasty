@@ -15,9 +15,30 @@ export type TickerGame = {
   winner: string | null;
   startTime: Date;
   sport: string | null;
+  // 🎯 Player props ride the ticker too.
+  kind?: string;
+  propLabel?: string | null;
+  line?: number | null;
+  propActual?: number | null;
 };
 
 function TickerItem({ g, fallbackSport }: { g: TickerGame; fallbackSport: string }) {
+  if (g.kind === "prop") {
+    const result =
+      g.winner === "AWAY" ? "Over ✓" : g.winner === "HOME" ? "Under ✓" : "Push";
+    return (
+      <span className="flex items-center gap-2 whitespace-nowrap text-lg">
+        <span>🎯</span>
+        <span className="font-semibold">{g.propLabel}</span>
+        <span className="font-mono font-black">O/U {g.line}</span>
+        <span className="text-sm text-slate-500">
+          {g.winner
+            ? `${g.propActual != null ? `${g.propActual} — ` : ""}${result}`
+            : `${kickFmt.format(g.startTime)} ET`}
+        </span>
+      </span>
+    );
+  }
   const live = g.homeScore != null && !g.winner;
   const side = (team: string, score: number | null, won: boolean) => (
     <span className={g.winner ? (won ? "font-black" : "text-slate-500") : "font-semibold"}>

@@ -2,6 +2,7 @@ import { db } from "./db";
 import { fetchScoreboard, toEspnDate, type EspnGame } from "./espn";
 import { fetchFantasyMatchups, parseFantasyExternalId } from "./fantasy";
 import { atsWinner } from "./formats";
+import { gradeLeagueProps } from "./props";
 
 /**
  * Resolves results for every imported, undecided, started game in a league —
@@ -15,15 +16,21 @@ export async function syncLeagueResults(leagueId: string, sport: string): Promis
   const league = await db.league.findUnique({ where: { id: leagueId } });
   if (!league) return 0;
 
+  // Player props are graded from boxscores, not the scoreboard — a prop
+  // shares its real game's externalId, so matching it here would stamp the
+  // GAME's winner onto the prop. Strictly kind "match" below.
+  const propsGraded = await gradeLeagueProps(leagueId, sport);
+
   const pending = await db.game.findMany({
     where: {
       slate: { leagueId },
+      kind: "match",
       externalId: { not: null },
       winner: null,
       startTime: { lt: new Date() },
     },
   });
-  if (pending.length === 0) return 0;
+  if (pending.length === 0) return propsGraded;
 
   const scoreboardGames = pending.filter(
     (g) => parseFantasyExternalId(g.externalId!).kind === "scoreboard"
@@ -89,5 +96,5 @@ export async function syncLeagueResults(leagueId: string, sport: string): Promis
       updated++;
     }
   }
-  return updated;
+  return updated + propsGraded;
 }

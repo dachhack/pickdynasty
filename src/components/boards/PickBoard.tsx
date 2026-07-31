@@ -138,6 +138,7 @@ export default function PickBoard({
               <p className="text-xs text-slate-500">{game.startTimeLabel}</p>
               <StatusChip game={game} isSpread={isSpread} />
             </div>
+            {game.prop && <p className="mt-2 text-sm font-bold">🎯 {game.prop.label}</p>}
             <div className="mt-3 grid grid-cols-2 gap-3">
               {(["AWAY", "HOME"] as const).map((side) => {
                 const team = side === "HOME" ? game.homeTeam : game.awayTeam;
@@ -160,7 +161,7 @@ export default function PickBoard({
                     }`}
                   >
                     <span>
-                      {side === "AWAY" && !game.isFantasy ? "@ " : ""}
+                      {side === "AWAY" && !game.isFantasy && !game.prop ? "@ " : ""}
                       {team}
                       {isSpread && <span className="text-slate-400">{spreadText(side, game.spread)}</span>}
                       {burned && " 💀"}

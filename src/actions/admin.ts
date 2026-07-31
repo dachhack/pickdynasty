@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { makeInviteCode, requireCommissioner } from "@/lib/league";
+import { propFamily, propStat, suggestLine } from "@/lib/props";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
 
 export async function updateLeagueSettings(formData: FormData) {
@@ -181,6 +182,63 @@ export async function addGame(formData: FormData) {
     data: { slateId, awayTeam, homeTeam, startTime: new Date(startRaw) },
   });
   revalidatePath(`/leagues/${leagueId}/admin/slates`);
+}
+
+/**
+ * 🎯 Adds a player prop to a slate, attached to one of the slate's games
+ * (inherits its start time for locking and its ESPN event for grading).
+ * A blank line auto-fills from Sleeper projections (NFL); otherwise the
+ * commissioner types the number. Blocked in survivor/spread formats.
+ */
+export async function addProp(formData: FormData) {
+  const leagueId = String(formData.get("leagueId") ?? "");
+  const slateId = String(formData.get("slateId") ?? "");
+  const me = await requireCommissioner(leagueId);
+  const back = `/leagues/${leagueId}/admin/slates`;
+
+  if (["survivor", "spread"].includes(me.league.format)) {
+    redirect(`${back}?propError=format`);
+  }
+
+  const gameId = String(formData.get("gameId") ?? "");
+  const game = await db.game.findFirst({
+    where: { id: gameId, slateId, kind: "match", slate: { leagueId } },
+  });
+  if (!game) redirect(`${back}?propError=game`);
+
+  const playerName = String(formData.get("playerName") ?? "").trim().slice(0, 60);
+  const statKey = String(formData.get("statKey") ?? "");
+  const sport = game.sport ?? me.league.sport;
+  const def = propStat(statKey);
+  if (!playerName || !def || def.family !== propFamily(sport)) {
+    redirect(`${back}?propError=stat`);
+  }
+
+  const lineRaw = String(formData.get("line") ?? "").trim();
+  let line = lineRaw ? Number(lineRaw) : null;
+  if (line != null && !Number.isFinite(line)) line = null;
+  if (line == null && !lineRaw) {
+    line = await suggestLine({ sport, playerName, statKey });
+  }
+  if (line == null) redirect(`${back}?propError=line`);
+
+  await db.game.create({
+    data: {
+      slateId,
+      kind: "prop",
+      awayTeam: "Over",
+      homeTeam: "Under",
+      startTime: game.startTime,
+      sport: game.sport,
+      externalId: game.externalId, // null on hand-entered games → manual grading
+      propLabel: `${playerName} · ${def.label}`,
+      propPlayer: playerName,
+      propStat: def.key,
+      line,
+    },
+  });
+  revalidatePath(`/leagues/${leagueId}/admin/slates`);
+  redirect(back);
 }
 
 export async function deleteGame(formData: FormData) {

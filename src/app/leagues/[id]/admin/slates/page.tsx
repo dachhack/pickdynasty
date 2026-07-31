@@ -4,10 +4,12 @@ import { requireCommissioner, slateStatus, SLATE_STATUS_UI } from "@/lib/league"
 import { espnSupported } from "@/lib/espn";
 import {
   addGame,
+  addProp,
   deleteGame,
   deleteSlate,
   setResult,
 } from "@/actions/admin";
+import { propStatsFor } from "@/lib/props";
 import { syncEspnResults } from "@/actions/espn";
 import { nudgeMissingPicks } from "@/actions/emails";
 import { emailEnabled } from "@/lib/email";
@@ -28,13 +30,22 @@ export default async function AdminSlatesPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ synced?: string; created?: string; nudged?: string }>;
+  searchParams: Promise<{
+    synced?: string;
+    created?: string;
+    nudged?: string;
+    propError?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { synced, created, nudged } = await searchParams;
+  const { synced, created, nudged, propError } = await searchParams;
   const me = await requireCommissioner(id);
   const autoScores = espnSupported(me.league.sport);
   const isSurvivor = me.league.format === "survivor";
+  // 🎯 Props: classic/confidence only, and only for sports with a stat catalog.
+  const propStats = propStatsFor(me.league.sport);
+  const propsAllowed =
+    !["survivor", "spread"].includes(me.league.format) && propStats.length > 0;
   const [fantasyLink, members, slates] = await Promise.all([
     db.fantasyLink.findUnique({ where: { leagueId: id } }),
     db.membership.findMany({ where: { leagueId: id } }),
@@ -60,6 +71,17 @@ export default async function AdminSlatesPage({
       {nudged != null && (
         <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
           📨 Nudged {nudged} {Number(nudged) === 1 ? "member" : "members"} to make their picks.
+        </p>
+      )}
+      {propError && (
+        <p className="rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+          {propError === "line"
+            ? "Couldn't suggest a line for that player — projections may be unavailable or the name didn't match. Enter the O/U number yourself."
+            : propError === "stat"
+              ? "Pick a player name and a stat that fits this game's sport."
+              : propError === "game"
+                ? "Props attach to a game in the slate — add the game first."
+                : "Props aren't available in survivor or spread formats."}
         </p>
       )}
       <div className="flex items-center justify-between">
@@ -161,18 +183,26 @@ export default async function AdminSlatesPage({
           )}
 
           <div className="mt-4 flex flex-col gap-3">
-            {slate.games.map((game) => (
+            {slate.games.map((game) => {
+              const isProp = game.kind === "prop";
+              return (
               <div key={game.id} className="rounded-lg border border-slate-800 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-semibold">
-                      {game.awayTeam} @ {game.homeTeam}
+                      {isProp
+                        ? `🎯 ${game.propLabel} — O/U ${game.line}`
+                        : `${game.awayTeam} @ ${game.homeTeam}`}
                     </p>
                     <p className="text-xs text-slate-500">
                       {fmt.format(game.startTime)} · {game.picks.length} picks in
-                      {game.externalId && " · 📡 auto-synced"}
-                      {game.spread != null && ` · line ${game.spread > 0 ? "+" : ""}${game.spread}`}
-                      {game.homeScore != null && game.awayScore != null && (
+                      {game.externalId && (isProp ? " · 📡 auto-graded at final" : " · 📡 auto-synced")}
+                      {!isProp && game.spread != null &&
+                        ` · line ${game.spread > 0 ? "+" : ""}${game.spread}`}
+                      {isProp && game.propActual != null && (
+                        <span> · actual {game.propActual}</span>
+                      )}
+                      {!isProp && game.homeScore != null && game.awayScore != null && (
                         <span className={game.winner ? "" : "font-semibold text-red-300"}>
                           {" "}· {game.winner ? "final" : "🔴 live"} {game.awayScore}–{game.homeScore}
                         </span>
@@ -189,9 +219,9 @@ export default async function AdminSlatesPage({
                         defaultValue={game.winner ?? "CLEAR"}
                       >
                         <option value="CLEAR">No result</option>
-                        <option value="AWAY">{game.awayTeam} won</option>
-                        <option value="HOME">{game.homeTeam} won</option>
-                        <option value="TIE">Tie / push</option>
+                        <option value="AWAY">{isProp ? "Over hit" : `${game.awayTeam} won`}</option>
+                        <option value="HOME">{isProp ? "Under hit" : `${game.homeTeam} won`}</option>
+                        <option value="TIE">{isProp ? "Push" : "Tie / push"}</option>
                       </select>
                       <button className="btn-ghost !px-3 !py-1.5 !text-xs">Set</button>
                     </form>
@@ -203,7 +233,8 @@ export default async function AdminSlatesPage({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
             {slate.games.length === 0 && (
               <p className="text-sm text-slate-500">No games yet — add the first one below.</p>
             )}
@@ -226,6 +257,49 @@ export default async function AdminSlatesPage({
             </div>
             <button className="btn self-end">Add game</button>
           </form>
+
+          {propsAllowed && slate.games.some((g) => g.kind === "match") && (
+            <form action={addProp} className="mt-4 grid gap-3 border-t border-slate-800 pt-4 sm:grid-cols-5">
+              <input type="hidden" name="leagueId" value={id} />
+              <input type="hidden" name="slateId" value={slate.id} />
+              <div className="sm:col-span-5 -mb-1">
+                <p className="text-sm font-semibold">🎯 Add a player prop</p>
+                <p className="text-xs text-slate-500">
+                  Over/under on one player&rsquo;s stat line, picked right alongside the games.
+                  Locks with its game{me.league.sport === "nfl" && "; leave the line blank to auto-fill from projections"}.
+                </p>
+              </div>
+              <div>
+                <label className="label">Player</label>
+                <input className="input" name="playerName" required maxLength={60} placeholder="Josh Allen" />
+              </div>
+              <div>
+                <label className="label">Stat</label>
+                <select className="input" name="statKey" defaultValue={propStats[0]?.key}>
+                  {propStats.map((s) => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">O/U line{me.league.sport === "nfl" && " (blank = auto)"}</label>
+                <input className="input" name="line" type="number" step="0.5" placeholder="249.5" />
+              </div>
+              <div>
+                <label className="label">In game</label>
+                <select className="input" name="gameId">
+                  {slate.games
+                    .filter((g) => g.kind === "match")
+                    .map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.awayTeam} @ {g.homeTeam}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <button className="btn self-end">Add prop</button>
+            </form>
+          )}
         </section>
         );
       })}

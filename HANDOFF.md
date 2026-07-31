@@ -99,7 +99,19 @@ reactions, streak/movement UI. Slate builder: drag-and-drop, by
 week/day/team, 🎁 packs (city + themes + 🏅 Top 25 CFB — empty until the
 preseason AP poll ~mid-Aug), 🗓️ cross-sport week window (anchor NFL/CFB
 week sweeps all sports, batched 4-at-a-time — ESPN 503s on a 13-league
-burst). Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
+burst). 🎯 Player props (over/under on a player stat) mix into slates
+(classic/confidence only): Game.kind="prop" rides the HOME/AWAY machinery
+(awayTeam="Over"/homeTeam="Under", winner AWAY=over/HOME=under/TIE=push),
+attached to a slate game (inherits start time + ESPN event). lib/props.ts
+owns the stat catalog (football: pass/rush/rec yds, passTDs, receptions;
+basketball: pts/reb/ast), Sleeper-projection line suggestions (NFL,
+blank-line = auto; offseason → null → asks for manual), and grading from
+ESPN summary boxscores (only when the game is FINAL; loose name match
+handles "J. Allen"). Cron sync grades props via lib/sync (which must keep
+kind:"match" on scoreboard matching — a prop shares its game's externalId
+and would otherwise get the GAME's winner stamped on it). Hand-entered
+games' props = manual grading via the Over/Under/Push result select.
+Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
 quick-join (JWT cookie), venue geofence (haversine + 75m grace, deterrent
 not proof), public /tv/<code> leaderboard with join QR, account claim
 (email/password or Google; adoptGuestAccounts merges). Venue tier v2:

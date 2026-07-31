@@ -183,6 +183,20 @@ model Game {
   homeTeam  String
   awayTeam  String
   startTime DateTime
+  // 🎯 Player props (kind "prop"): an over/under on one player's stat line,
+  // mixed into a slate alongside games. awayTeam/homeTeam hold "Over"/
+  // "Under" so pick storage and scoring reuse the HOME/AWAY machinery
+  // (winner AWAY = over hit, HOME = under hit, TIE = push). propLabel is
+  // the display ("Josh Allen · Passing yards"), line the O/U number;
+  // propPlayer/propStat + externalId (the REAL game's ESPN event) drive
+  // auto-grading from boxscores (lib/props.ts), propActual records the
+  // final stat. Sync must EXCLUDE props from scoreboard matching.
+  kind       String   @default("match") // match | prop
+  propLabel  String?
+  propPlayer String?
+  propStat   String?
+  line       Float?
+  propActual Float?
   // null = not decided; HOME | AWAY | TIE.
   // In spread leagues this is the AGAINST-THE-SPREAD result, not the SU winner.
   winner    String?

@@ -19,6 +19,9 @@ export type GameView = {
   awayScore: number | null;
   spread: number | null;
   isFantasy: boolean;
+  // 🎯 Player prop: homeTeam/awayTeam already carry "Under x.5"/"Over x.5"
+  // button text; this adds the headline and (once final) the actual stat.
+  prop: { label: string; actual: number | null } | null;
   burnedHome: boolean;
   burnedAway: boolean;
   myChoice: "HOME" | "AWAY" | null;

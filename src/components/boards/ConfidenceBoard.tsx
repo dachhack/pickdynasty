@@ -152,7 +152,7 @@ export default function ConfidenceBoard({
             <div key={game.id} className="card !py-3 opacity-70">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="font-semibold">
-                  {game.awayTeam} @ {game.homeTeam}
+                  {game.prop ? `🎯 ${game.prop.label}` : `${game.awayTeam} @ ${game.homeTeam}`}
                   {choices[game.id] && (
                     <span className="ml-2 text-slate-400">
                       → {choices[game.id] === "HOME" ? game.homeTeam : game.awayTeam}
@@ -216,6 +216,7 @@ function SortableGameRow({
       <RankBadge rank={rank} />
       <div className="min-w-0 flex-1">
         <p className="text-xs text-slate-500">{game.startTimeLabel}</p>
+        {game.prop && <p className="mt-0.5 truncate text-sm font-bold">🎯 {game.prop.label}</p>}
         <div className="mt-1 grid grid-cols-2 gap-2">
           {(["AWAY", "HOME"] as const).map((side) => {
             const team = side === "HOME" ? game.homeTeam : game.awayTeam;
@@ -231,7 +232,7 @@ function SortableGameRow({
                     : "border-slate-700 text-slate-300 hover:border-slate-500"
                 }`}
               >
-                {side === "AWAY" && !game.isFantasy ? "@ " : ""}
+                {side === "AWAY" && !game.isFantasy && !game.prop ? "@ " : ""}
                 {team}
               </button>
             );

@@ -9,9 +9,10 @@ export function StatusChip({ game, isSpread }: { game: GameView; isSpread: boole
     return (
       <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-semibold text-slate-300">
         Final{hasScore && `: ${game.awayScore}–${game.homeScore}`}
+        {game.prop?.actual != null && `: ${game.prop.actual}`}
         {" · "}
         {game.winner === "TIE"
-          ? isSpread ? "Push" : "Tie"
+          ? isSpread || game.prop ? "Push" : "Tie"
           : `${game.winner === "HOME" ? game.homeTeam : game.awayTeam}${isSpread ? " covers" : ""}`}
       </span>
     );

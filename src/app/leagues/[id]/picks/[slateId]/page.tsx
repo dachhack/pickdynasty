@@ -76,10 +76,14 @@ export default async function SlatePicksPage({
       locked ||
       (membership.role === "COMMISSIONER" && league.adminCanSeePicks);
     const myPick = game.picks.find((p) => p.membershipId === membership.id);
+    const isProp = game.kind === "prop";
     return {
       id: game.id,
-      homeTeam: game.homeTeam,
-      awayTeam: game.awayTeam,
+      homeTeam: isProp ? `Under ${game.line}` : game.homeTeam,
+      awayTeam: isProp ? `Over ${game.line}` : game.awayTeam,
+      prop: isProp
+        ? { label: game.propLabel ?? "Player prop", actual: game.propActual }
+        : null,
       startTimeLabel: fmt.format(game.startTime),
       locked,
       winner: (game.winner as GameView["winner"]) ?? null,

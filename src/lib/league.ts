@@ -343,9 +343,10 @@ export function buildRecaps(league: LeagueForStandings): Recap[] {
         );
       }
       // Biggest upset: decided game whose winning side was picked by the fewest.
+      // Props sit this one out — "Over beat Under" isn't a story.
       let upset: { g: (typeof gamesDecided)[number]; backers: number } | null = null;
       for (const g of gamesDecided) {
-        if (g.picks.length < 2) continue;
+        if (g.kind === "prop" || g.picks.length < 2) continue;
         const backers = g.picks.filter((p) => p.choice === g.winner).length;
         if (backers / g.picks.length < 0.5 && (!upset || backers < upset.backers)) {
           upset = { g, backers };

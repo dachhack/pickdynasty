@@ -85,6 +85,32 @@ async function fetchWithRetry(url: string): Promise<any> {
   }
 }
 
+// Game summary (header + boxscore player stat lines) — used to grade
+// player props (lib/props.ts). Same cache/dedupe discipline as the
+// scoreboard: many props on one game cost ESPN a single fetch per tick.
+const summaryCache = new Map<string, { at: number; promise: Promise<any> }>();
+
+export async function fetchSummary(sport: string, eventId: string): Promise<any | null> {
+  const cfg = ESPN_PATHS[sport];
+  if (!cfg) return null;
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${cfg.path}/summary?event=${eventId}`;
+
+  const cached = summaryCache.get(url);
+  if (cached && Date.now() - cached.at < SCOREBOARD_TTL_MS) return cached.promise;
+
+  const promise = fetchWithRetry(url);
+  summaryCache.set(url, { at: Date.now(), promise });
+  promise.catch(() => {
+    if (summaryCache.get(url)?.promise === promise) summaryCache.delete(url);
+  });
+  if (summaryCache.size > 200) {
+    for (const [k, v] of summaryCache) {
+      if (Date.now() - v.at >= SCOREBOARD_TTL_MS) summaryCache.delete(k);
+    }
+  }
+  return promise;
+}
+
 async function espnScoreboard(sport: string, query: string): Promise<EspnGame[]> {
   const cfg = ESPN_PATHS[sport];
   if (!cfg) return [];
