@@ -64,7 +64,9 @@ export default async function RootLayout({
   const tv = (h.get("x-pathname") ?? "").startsWith("/tv/");
   if (tv) {
     return (
-      <html lang="en" data-theme={theme} className="h-full antialiased">
+      // Always dark: the TV boards are projection surfaces for dim bars,
+      // not UI — they ignore the device's theme preference.
+      <html lang="en" data-theme="dark" className="h-full antialiased">
         <body className="min-h-full flex flex-col">
           <main className="tv-zoom w-full flex-1 px-6 py-6">{children}</main>
           <FullscreenButton />
