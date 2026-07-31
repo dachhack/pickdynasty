@@ -114,7 +114,10 @@ attendance tiers 3🍻/6🔥/10👑); permanent TV board /tv/venue/<venueCode>
 ONE url). /tv/* routes render CHROME-FREE (no app header/footer/width cap
 — root layout branches on x-pathname, stamped by src/middleware.ts), get
 a floating ⛶ fullscreen toggle, and zoom 1.3×/1.8× at ≥1600/2400px
-(.tv-zoom in globals.css) so boards read from across a bar. Player: share cards
+(.tv-zoom in globals.css) so boards read from across a bar. The featured
+slate's games run as a bottom TICKER (components/TvTicker.tsx — pure CSS
+loop, two identical halves translate -50%; auto-refresh patches scores
+without restarting the scroll; honors prefers-reduced-motion). Player: share cards
 (/api/leagues/[id]/card/[slateId], Web Share API), trophy case. HQ
 (super admin, mlporritt@gmail.com via SUPER_ADMIN_EMAILS): stats, feed
 health, curated pick packs, league/user admin, global sync. Brand:

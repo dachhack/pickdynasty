@@ -9,14 +9,9 @@ import {
 import { formatMeta } from "@/lib/formats";
 import { sportEmoji } from "@/lib/sports";
 import AutoRefresh from "@/components/AutoRefresh";
+import TvTicker from "@/components/TvTicker";
 
 export const dynamic = "force-dynamic";
-
-const kickFmt = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
-  timeZone: "America/New_York",
-});
 
 /**
  * Public big-screen leaderboard for event nights: no auth, read-only,
@@ -73,7 +68,7 @@ export default async function TvPage({
   const top = standings.slice(0, 12);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 pb-16">
       <AutoRefresh seconds={20} />
 
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -101,11 +96,10 @@ export default async function TvPage({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <section className="card !p-0 lg:col-span-3">
-          <h2 className="px-5 pt-5 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            🏆 Leaderboard
-          </h2>
+      <section className="card !p-0">
+        <h2 className="px-5 pt-5 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          🏆 Leaderboard
+        </h2>
           <table className="mt-2 w-full">
             <tbody>
               {top.map((row, i) => (
@@ -143,53 +137,21 @@ export default async function TvPage({
               + {standings.length - top.length} more chasing the podium
             </p>
           )}
-        </section>
+      </section>
 
-        <section className="card !p-0 lg:col-span-2">
-          <h2 className="px-5 pt-5 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {featuredStatus === "live"
+      {featured && (
+        <TvTicker
+          label={
+            (featuredStatus === "live"
               ? "🔴 Live now"
               : featuredStatus === "open"
                 ? "🟢 Picks open"
-                : "✅ Final"}
-            {featured && ` · ${featured.name}`}
-          </h2>
-          {featured ? (
-            <ul className="mt-2">
-              {featured.games.map((g) => {
-                const live = g.homeScore != null && !g.winner;
-                return (
-                  <li key={g.id} className="border-t border-slate-800/50 px-5 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className={g.winner === "AWAY" ? "font-bold" : ""}>{g.awayTeam}</span>
-                      <span className="font-mono text-xl font-black">
-                        {g.awayScore ?? "–"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className={g.winner === "HOME" ? "font-bold" : ""}>@ {g.homeTeam}</span>
-                      <span className="font-mono text-xl font-black">
-                        {g.homeScore ?? "–"}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {g.winner
-                        ? "Final"
-                        : live
-                          ? "🔴 In progress"
-                          : `Starts ${kickFmt.format(g.startTime)} ET`}
-                    </p>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="px-5 py-10 text-center text-slate-500">
-              No games on the board yet.
-            </p>
-          )}
-        </section>
-      </div>
+                : "✅ Final") + ` · ${featured.name}`
+          }
+          games={featured.games}
+          fallbackSport={league.sport}
+        />
+      )}
 
       <p className="text-center text-sm text-slate-600">
         {venue && (

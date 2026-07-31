@@ -134,6 +134,25 @@ body {
   @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400;
 }
 
+/* Bottom sports ticker on the TV boards (see components/TvTicker.tsx):
+   two identical halves scroll left by exactly one half-width, looping
+   seamlessly. Halves are min-w-full so short slates still fill the bar. */
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll var(--ticker-duration, 40s) linear infinite;
+}
+@keyframes ticker-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
 /* 10-foot UI: the /tv/* boards render chrome-free (see root layout) and
    gently scale up on TV-sized viewports so they read from across a bar. */
 @media (min-width: 1600px) {
