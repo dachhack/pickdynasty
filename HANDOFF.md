@@ -115,7 +115,8 @@ aggregates by USER so claimed guests keep records; night wins → points;
 attendance tiers 3🍻/6🔥/10👑); permanent TV board /tv/venue/<venueCode>
 (auto-features newest night + join QR + regulars wall — the bar bookmarks
 ONE url). /tv/* routes render CHROME-FREE (no app header/footer/width cap
-— root layout branches on x-pathname, stamped by src/middleware.ts), get
+— root layout branches on x-pathname, stamped by src/middleware.ts),
+ALWAYS DARK regardless of the theme cookie (projection surfaces), get
 a floating ⛶ fullscreen toggle, and zoom 1.3×/1.8× at ≥1600/2400px
 (.tv-zoom in globals.css) so boards read from across a bar. The featured
 slate's games run as a bottom TICKER (components/TvTicker.tsx — pure CSS
