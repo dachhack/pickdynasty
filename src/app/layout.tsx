@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import "./globals.css";
+import FullscreenButton from "@/components/FullscreenButton";
 import { getCurrentUser } from "@/lib/auth";
 import { parseTheme } from "@/lib/theme";
 import { userIsSuperAdmin } from "@/lib/superadmin";
@@ -55,8 +56,22 @@ export async function generateViewport(): Promise<Viewport> {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const [user, store] = await Promise.all([getCurrentUser(), cookies()]);
+  const [user, store, h] = await Promise.all([getCurrentUser(), cookies(), headers()]);
   const theme = parseTheme(store.get("ep_theme")?.value);
+  // Big-screen mode for the /tv/* boards: no app chrome, full width, a
+  // fullscreen toggle, and a gentle zoom on TV-sized viewports (see
+  // .tv-zoom in globals.css). x-pathname is stamped by src/middleware.ts.
+  const tv = (h.get("x-pathname") ?? "").startsWith("/tv/");
+  if (tv) {
+    return (
+      <html lang="en" data-theme={theme} className="h-full antialiased">
+        <body className="min-h-full flex flex-col">
+          <main className="tv-zoom w-full flex-1 px-6 py-6">{children}</main>
+          <FullscreenButton />
+        </body>
+      </html>
+    );
+  }
   return (
     <html lang="en" data-theme={theme} className="h-full antialiased">
       <body className="min-h-full flex flex-col">

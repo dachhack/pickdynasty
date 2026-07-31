@@ -7,9 +7,13 @@ import { createServerClient } from "@supabase/ssr";
  * the local JWT auth driver.
  */
 export async function middleware(request: NextRequest) {
+  // Expose the pathname to server layouts — the root layout drops the app
+  // chrome (header/footer/width cap) on the /tv/* big-screen routes.
+  request.headers.set("x-pathname", request.nextUrl.pathname);
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return NextResponse.next();
+  if (!url || !anonKey) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(url, anonKey, {
