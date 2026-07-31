@@ -10,6 +10,7 @@ import { computeVenueBoard, regularTier } from "@/lib/venue";
 import { formatMeta } from "@/lib/formats";
 import AutoRefresh from "@/components/AutoRefresh";
 import TvTicker from "@/components/TvTicker";
+import VenueMark from "@/components/VenueMark";
 
 export const dynamic = "force-dynamic";
 
@@ -78,8 +79,8 @@ export default async function VenueTvPage({
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black sm:text-5xl">
-            {venue.emoji} {venue.name}
+          <h1 className="flex items-center gap-3 text-4xl font-black sm:text-5xl">
+            <VenueMark venue={venue} className="h-14 w-14 text-5xl" /> {venue.name}
           </h1>
           <p className="mt-1 text-lg text-slate-400">
             {tonight ? (

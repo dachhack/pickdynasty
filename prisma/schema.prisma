@@ -49,6 +49,13 @@ model Venue {
   id              String   @id @default(cuid())
   name            String
   emoji           String   @default("🍺")
+  // Optional uploaded logo shown in place of the emoji on the console, TV
+  // board, and dashboard cards. Served by /api/venues/[id]/logo;
+  // logoUpdatedAt doubles as the has-logo flag and the cache-buster.
+  // Excluded from queries by default — global omit in src/lib/db.ts.
+  logo            Bytes?
+  logoType        String?
+  logoUpdatedAt   DateTime?
   // Stable public code (invite-code alphabet) — nights rotate codes, this doesn't.
   code            String   @unique
   createdById     String

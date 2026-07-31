@@ -117,7 +117,12 @@ a floating ⛶ fullscreen toggle, and zoom 1.3×/1.8× at ≥1600/2400px
 (.tv-zoom in globals.css) so boards read from across a bar. The featured
 slate's games run as a bottom TICKER (components/TvTicker.tsx — pure CSS
 loop, two identical halves translate -50%; auto-refresh patches scores
-without restarting the scroll; honors prefers-reduced-motion). Player: share cards
+without restarting the scroll; honors prefers-reduced-motion). Venue
+branding: editable emoji icon + optional uploaded logo (PNG/JPEG/WebP
+≤512KB, bytes in Venue.logo BYTEA — globally OMITTED in lib/db.ts so
+queries stay light; served by /api/venues/[id]/logo with immutable cache,
+?v=logoUpdatedAt busts; components/VenueMark.tsx picks logo-else-emoji on
+console/TV/dashboard). Player: share cards
 (/api/leagues/[id]/card/[slateId], Web Share API), trophy case. HQ
 (super admin, mlporritt@gmail.com via SUPER_ADMIN_EMAILS): stats, feed
 health, curated pick packs, league/user admin, global sync. Brand:

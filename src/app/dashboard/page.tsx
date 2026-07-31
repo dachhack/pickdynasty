@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { sportEmoji, sportLabel } from "@/lib/sports";
 import { joinLeague } from "@/actions/leagues";
+import VenueMark from "@/components/VenueMark";
 
 export default async function DashboardPage({
   searchParams,
@@ -65,8 +66,8 @@ export default async function DashboardPage({
           <div className="mt-2 grid gap-4 sm:grid-cols-2">
             {venues.map((v) => (
               <Link key={v.id} href={`/venues/${v.id}`} className="card transition hover:border-indigo-600">
-                <h3 className="font-bold">
-                  {v.emoji} {v.name}
+                <h3 className="flex items-center gap-2 font-bold">
+                  <VenueMark venue={v} className="h-7 w-7 text-xl" /> {v.name}
                 </h3>
                 <p className="mt-1 text-sm text-slate-400">
                   {v.leagues.length} {v.leagues.length === 1 ? "night" : "nights"} · start

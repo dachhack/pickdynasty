@@ -4,10 +4,16 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { computeVenueBoard, regularTier } from "@/lib/venue";
-import { startNextNight, updateVenue } from "@/actions/venues";
+import {
+  removeVenueLogo,
+  startNextNight,
+  updateVenue,
+  uploadVenueLogo,
+} from "@/actions/venues";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
 import LocationField from "@/components/LocationField";
 import CopyField from "@/components/CopyField";
+import VenueMark from "@/components/VenueMark";
 
 const nightFmt = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -22,10 +28,10 @@ export default async function VenuePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; logoError?: string }>;
 }) {
   const { id } = await params;
-  const { saved } = await searchParams;
+  const { saved, logoError } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const venue = await db.venue.findUnique({ where: { id } });
@@ -47,8 +53,8 @@ export default async function VenuePage({
       )}
 
       <div>
-        <h1 className="text-2xl font-black">
-          {venue.emoji} {venue.name}
+        <h1 className="flex items-center gap-2 text-2xl font-black">
+          <VenueMark venue={venue} className="h-9 w-9 text-2xl" /> {venue.name}
         </h1>
         <p className="mt-1 text-sm text-slate-400">
           Recurring event nights · venue code{" "}
@@ -214,9 +220,15 @@ export default async function VenuePage({
         </p>
         <form action={updateVenue} className="mt-4 flex flex-col gap-4">
           <input type="hidden" name="venueId" value={id} />
-          <div className="sm:max-w-xs">
-            <label className="label" htmlFor="name">Venue name</label>
-            <input className="input" id="name" name="name" defaultValue={venue.name} maxLength={60} />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="name">Venue name</label>
+              <input className="input" id="name" name="name" defaultValue={venue.name} maxLength={60} />
+            </div>
+            <div>
+              <label className="label" htmlFor="emoji">Icon (emoji)</label>
+              <input className="input" id="emoji" name="emoji" defaultValue={venue.emoji} />
+            </div>
           </div>
           <div className="flex flex-col gap-3 rounded-lg border border-slate-800 p-3">
             <label className="flex items-center gap-2 text-sm text-slate-300">
@@ -259,6 +271,44 @@ export default async function VenuePage({
           </div>
           <button className="btn self-start">Save venue</button>
         </form>
+      </section>
+
+      <section className="card">
+        <h2 className="font-bold">🖼️ Venue logo</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Optional — replaces the {venue.emoji} icon with your own mark on the TV board,
+          the console, and your dashboard. Square images look best; PNG, JPEG, or WebP
+          up to 512 KB.
+        </p>
+        {logoError && (
+          <p className="mt-3 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+            {logoError === "type"
+              ? "That file type won't work — upload a PNG, JPEG, or WebP."
+              : logoError === "size"
+                ? "That image is over 512 KB — shrink it and try again."
+                : "Pick an image file first."}
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <VenueMark venue={venue} className="h-16 w-16 text-5xl" />
+          <form action={uploadVenueLogo} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="venueId" value={id} />
+            <input
+              type="file"
+              name="logo"
+              accept="image/png,image/jpeg,image/webp"
+              required
+              className="text-sm text-slate-400 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-200"
+            />
+            <button className="btn !text-sm">Upload</button>
+          </form>
+          {venue.logoUpdatedAt && (
+            <form action={removeVenueLogo}>
+              <input type="hidden" name="venueId" value={id} />
+              <button className="btn-danger">Remove — back to {venue.emoji}</button>
+            </form>
+          )}
+        </div>
       </section>
     </div>
   );

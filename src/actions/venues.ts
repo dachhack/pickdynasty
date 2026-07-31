@@ -107,12 +107,14 @@ export async function startNextNight(formData: FormData) {
   redirect(`/leagues/${league.id}/admin/slates`);
 }
 
-/** Venue settings: name + the saved geofence stamped onto FUTURE nights. */
+/** Venue settings: name/emoji + the saved geofence stamped onto FUTURE nights. */
 export async function updateVenue(formData: FormData) {
   const venueId = String(formData.get("venueId") ?? "");
   const { venue } = await requireVenueHost(venueId);
 
   const name = String(formData.get("name") ?? "").trim().slice(0, 60) || venue.name;
+  const emoji =
+    [...String(formData.get("emoji") ?? "").trim()].slice(0, 2).join("") || venue.emoji;
   let requireLocation = formData.get("requireLocation") === "on";
 
   const coord = (k: string) => {
@@ -136,10 +138,52 @@ export async function updateVenue(formData: FormData) {
     where: { id: venueId },
     data: {
       name,
+      emoji,
       requireLocation,
       venueRadiusM,
       ...(venueLat != null && venueLng != null ? { venueLat, venueLng } : {}),
     },
+  });
+  redirect(`/venues/${venueId}?saved=1`);
+}
+
+// ---------------- Venue logo (replaces the emoji mark when set) ----------------
+
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const LOGO_MAX_BYTES = 512 * 1024;
+
+export async function uploadVenueLogo(formData: FormData) {
+  const venueId = String(formData.get("venueId") ?? "");
+  await requireVenueHost(venueId);
+
+  const file = formData.get("logo");
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(`/venues/${venueId}?logoError=empty`);
+  }
+  if (!LOGO_TYPES.includes(file.type)) {
+    redirect(`/venues/${venueId}?logoError=type`);
+  }
+  if (file.size > LOGO_MAX_BYTES) {
+    redirect(`/venues/${venueId}?logoError=size`);
+  }
+
+  await db.venue.update({
+    where: { id: venueId },
+    data: {
+      logo: new Uint8Array(await file.arrayBuffer()),
+      logoType: file.type,
+      logoUpdatedAt: new Date(),
+    },
+  });
+  redirect(`/venues/${venueId}?saved=1`);
+}
+
+export async function removeVenueLogo(formData: FormData) {
+  const venueId = String(formData.get("venueId") ?? "");
+  await requireVenueHost(venueId);
+  await db.venue.update({
+    where: { id: venueId },
+    data: { logo: null, logoType: null, logoUpdatedAt: null },
   });
   redirect(`/venues/${venueId}?saved=1`);
 }
