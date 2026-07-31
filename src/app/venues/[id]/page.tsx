@@ -7,6 +7,8 @@ import { computeVenueBoard, regularTier } from "@/lib/venue";
 import { removeVenueLogo, startNextNight, updateVenue } from "@/actions/venues";
 import LogoUploadForm from "@/components/LogoUploadForm";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
+import { SPORTS } from "@/lib/sports";
+import { FORMATS } from "@/lib/formats";
 import LocationField from "@/components/LocationField";
 import CopyField from "@/components/CopyField";
 import VenueMark from "@/components/VenueMark";
@@ -24,10 +26,10 @@ export default async function VenuePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; logoError?: string }>;
+  searchParams: Promise<{ saved?: string; created?: string; logoError?: string }>;
 }) {
   const { id } = await params;
-  const { saved, logoError } = await searchParams;
+  const { saved, created, logoError } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const venue = await db.venue.findUnique({ where: { id } });
@@ -45,6 +47,12 @@ export default async function VenuePage({
       {saved && (
         <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
           Venue saved.
+        </p>
+      )}
+      {created && (
+        <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+          🎉 Venue created — this console is home base. Start tonight&rsquo;s game below to
+          open your first board, and bookmark the TV link on the bar&rsquo;s screen.
         </p>
       )}
 
@@ -224,6 +232,24 @@ export default async function VenuePage({
             <div>
               <label className="label" htmlFor="emoji">Icon (emoji)</label>
               <input className="input" id="emoji" name="emoji" defaultValue={venue.emoji} />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="sport">Usual sport (new nights)</label>
+              <select className="input" id="sport" name="sport" defaultValue={venue.sport}>
+                {SPORTS.map((s) => (
+                  <option key={s.id} value={s.id}>{s.emoji} {s.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="format">Format (new nights)</label>
+              <select className="input" id="format" name="format" defaultValue={venue.format}>
+                {FORMATS.map((f) => (
+                  <option key={f.id} value={f.id}>{f.emoji} {f.label}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="flex flex-col gap-3 rounded-lg border border-slate-800 p-3">

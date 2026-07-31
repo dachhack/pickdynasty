@@ -104,8 +104,11 @@ quick-join (JWT cookie), venue geofence (haversine + 75m grace, deterrent
 not proof), public /tv/<code> leaderboard with join QR, account claim
 (email/password or Google; adoptGuestAccounts merges). Venue tier v2:
 Venue model groups recurring nights (each night = a League via
-League.venueId, fresh invite code), promoted from league admin ("make
-this a recurring venue"); host console /venues/[id] (start tonight's game
+League.venueId, fresh invite code). TWO entry paths: venue-first
+(/venues/new — name/emoji/sport/format defaults + optional geofence, then
+start nights from the console; "+ New venue" on dashboard, cross-link on
+/leagues/new) or promoted from league admin ("make this a recurring
+venue", which captures the league's sport/format as the venue defaults); host console /venues/[id] (start tonight's game
 clones last night's settings + venue geofence, night history with per-night
 winners, settings); cross-night "bar regulars" board (src/lib/venue.ts,
 aggregates by USER so claimed guests keep records; night wins → points;

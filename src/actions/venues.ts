@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { makeInviteCode, requireCommissioner } from "@/lib/league";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
+import { SPORTS } from "@/lib/sports";
+import { FORMATS } from "@/lib/formats";
 
 const nightDateFmt = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -20,6 +22,51 @@ async function requireVenueHost(venueId: string) {
   const venue = await db.venue.findUnique({ where: { id: venueId } });
   if (!venue || venue.createdById !== user.id) redirect("/dashboard");
   return { user, venue };
+}
+
+/**
+ * Venue-first flow: creates a venue directly (no league yet). Nights are
+ * started from the console afterwards; the first one uses the sport/format
+ * defaults captured here.
+ */
+export async function createStandaloneVenue(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/venues/new");
+
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60);
+  if (!name) redirect("/venues/new");
+  const emoji =
+    [...String(formData.get("emoji") ?? "").trim()].slice(0, 2).join("") || "🍺";
+  const sport = String(formData.get("sport") ?? "other");
+  const format = String(formData.get("format") ?? "classic");
+  if (!SPORTS.some((s) => s.id === sport)) redirect("/venues/new");
+  if (!FORMATS.some((f) => f.id === format)) redirect("/venues/new");
+
+  const coord = (k: string) => {
+    const raw = String(formData.get(k) ?? "").trim();
+    return raw && Number.isFinite(Number(raw)) ? Number(raw) : null;
+  };
+  const venueLat = coord("venueLat");
+  const venueLng = coord("venueLng");
+  const radius = Number(formData.get("venueRadiusM") ?? 0);
+  const requireLocation =
+    formData.get("requireLocation") === "on" && venueLat != null && venueLng != null;
+
+  const venue = await db.venue.create({
+    data: {
+      name,
+      emoji,
+      sport,
+      format,
+      code: makeInviteCode(),
+      createdById: user.id,
+      requireLocation,
+      venueLat,
+      venueLng,
+      venueRadiusM: VENUE_RADIUS_OPTIONS.some((o) => o.value === radius) ? radius : 150,
+    },
+  });
+  redirect(`/venues/${venue.id}?created=1`);
 }
 
 /**
@@ -38,6 +85,8 @@ export async function createVenue(formData: FormData) {
   const venue = await db.venue.create({
     data: {
       name,
+      sport: me.league.sport,
+      format: me.league.format,
       code: makeInviteCode(),
       createdById: me.userId,
       requireLocation: me.league.requireLocation,
@@ -77,9 +126,9 @@ export async function startNextNight(formData: FormData) {
   const league = await db.league.create({
     data: {
       name: `${venue.name} · ${nightDateFmt.format(new Date())}`,
-      sport: template?.sport ?? "other",
+      sport: template?.sport ?? venue.sport,
       season: String(new Date().getFullYear()),
-      format: template?.format ?? "classic",
+      format: template?.format ?? venue.format,
       blindPicks: template?.blindPicks ?? true,
       adminCanSeePicks: template?.adminCanSeePicks ?? false,
       buyIn: template?.buyIn ?? 0,
@@ -115,6 +164,10 @@ export async function updateVenue(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim().slice(0, 60) || venue.name;
   const emoji =
     [...String(formData.get("emoji") ?? "").trim()].slice(0, 2).join("") || venue.emoji;
+  const sportRaw = String(formData.get("sport") ?? "");
+  const sport = SPORTS.some((s) => s.id === sportRaw) ? sportRaw : venue.sport;
+  const formatRaw = String(formData.get("format") ?? "");
+  const format = FORMATS.some((f) => f.id === formatRaw) ? formatRaw : venue.format;
   let requireLocation = formData.get("requireLocation") === "on";
 
   const coord = (k: string) => {
@@ -139,6 +192,8 @@ export async function updateVenue(formData: FormData) {
     data: {
       name,
       emoji,
+      sport,
+      format,
       requireLocation,
       venueRadiusM,
       ...(venueLat != null && venueLng != null ? { venueLat, venueLng } : {}),

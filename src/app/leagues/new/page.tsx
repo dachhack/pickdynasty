@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { SPORTS } from "@/lib/sports";
@@ -11,6 +12,13 @@ export default async function NewLeaguePage() {
   return (
     <div className="mx-auto max-w-lg">
       <h1 className="text-2xl font-black">Start a new league</h1>
+      <p className="mt-2 text-sm text-slate-400">
+        Running a recurring bar or watch-party night?{" "}
+        <Link href="/venues/new" className="text-indigo-400 hover:underline">
+          🍻 Set up a venue instead
+        </Link>{" "}
+        — one-tap game nights, an all-time regulars board, and a permanent TV link.
+      </p>
       <form action={createLeague} className="card mt-6 flex flex-col gap-4">
         <div>
           <label className="label" htmlFor="name">League name</label>

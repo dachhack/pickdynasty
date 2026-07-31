@@ -32,7 +32,10 @@ export default async function DashboardPage({
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-black">My Leagues</h1>
-        <Link href="/leagues/new" className="btn">+ New league</Link>
+        <div className="flex gap-2">
+          <Link href="/venues/new" className="btn-ghost">🍻 New venue</Link>
+          <Link href="/leagues/new" className="btn">+ New league</Link>
+        </div>
       </div>
 
       {pwreset && (

@@ -58,6 +58,10 @@ model Venue {
   logoUpdatedAt   DateTime?
   // Stable public code (invite-code alphabet) — nights rotate codes, this doesn't.
   code            String   @unique
+  // Night defaults: the first night (and any night with no predecessor to
+  // clone) is created with this sport/format.
+  sport           String   @default("other")
+  format          String   @default("classic")
   createdById     String
   createdBy       User     @relation("VenueHost", fields: [createdById], references: [id])
   // Saved venue geofence, stamped onto every new night at creation time.
