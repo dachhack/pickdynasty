@@ -45,7 +45,8 @@ export async function guestJoin(
   if (existing) {
     await db.membership.upsert({
       where: { userId_leagueId: { userId: existing.id, leagueId: league.id } },
-      update: {},
+      // A spectator host joining through the QR means they're playing.
+      update: { spectator: false },
       create: { userId: existing.id, leagueId: league.id, teamName: name },
     });
     redirect(`/leagues/${league.id}`);

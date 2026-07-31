@@ -139,6 +139,10 @@ model Membership {
   userId    String
   leagueId  String
   role      String   @default("PLAYER") // COMMISSIONER | PLAYER
+  // Hosting without playing: venue-night commissioners start as spectators
+  // — full admin rights but hidden from every board/standings/recap until
+  // they save a team (updateTeam / joining via code flips this off).
+  spectator Boolean  @default(false)
   teamName  String
   teamColor String   @default("#4f46e5")
   teamEmoji String   @default("🏆")

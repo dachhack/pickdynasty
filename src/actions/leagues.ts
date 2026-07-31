@@ -69,10 +69,28 @@ export async function joinLeague(formData: FormData) {
   const teamName = String(formData.get("teamName") ?? "").trim() || `${user.name}'s Team`;
   await db.membership.upsert({
     where: { userId_leagueId: { userId: user.id, leagueId: league.id } },
-    update: {},
+    // A spectator host joining through the front door means they're playing.
+    update: { spectator: false },
     create: { userId: user.id, leagueId: league.id, teamName },
   });
   redirect(`/leagues/${league.id}`);
+}
+
+/**
+ * A commissioner stepping off the board: back to hosting-only. Their team
+ * disappears from standings (picks are kept but no longer count) until
+ * they save a team again.
+ */
+export async function leaveBoardAsHost(formData: FormData) {
+  const leagueId = String(formData.get("leagueId") ?? "");
+  const membership = await requireMembership(leagueId);
+  if (membership.role !== "COMMISSIONER") redirect(`/leagues/${leagueId}/team`);
+  await db.membership.update({
+    where: { id: membership.id },
+    data: { spectator: true },
+  });
+  revalidatePath(`/leagues/${leagueId}`, "layout");
+  redirect(`/leagues/${leagueId}/team?saved=1`);
 }
 
 export async function updateTeam(formData: FormData) {
@@ -86,7 +104,13 @@ export async function updateTeam(formData: FormData) {
   if (teamName) {
     await db.membership.update({
       where: { id: membership.id },
-      data: { teamName, teamColor, teamEmoji: [...teamEmoji].slice(0, 2).join("") },
+      // Saving a team also puts a spectator host on the board.
+      data: {
+        teamName,
+        teamColor,
+        teamEmoji: [...teamEmoji].slice(0, 2).join(""),
+        spectator: false,
+      },
     });
   }
   revalidatePath(`/leagues/${leagueId}`, "layout");

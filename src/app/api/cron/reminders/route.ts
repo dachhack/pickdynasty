@@ -61,6 +61,7 @@ export async function GET(request: Request) {
     const reminded = new Set(slate.reminderLogs.map((r) => r.membershipId));
 
     for (const m of slate.league.memberships) {
+      if (m.spectator) continue; // hosts without a team don't get pick nags
       const count = slate.games.reduce(
         (n, g) => n + (g.picks.some((p) => p.membershipId === m.id) ? 1 : 0),
         0

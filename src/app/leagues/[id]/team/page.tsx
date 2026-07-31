@@ -3,7 +3,7 @@ import {
   loadLeagueForStandings,
   requireMembership,
 } from "@/lib/league";
-import { updateTeam } from "@/actions/leagues";
+import { leaveBoardAsHost, updateTeam } from "@/actions/leagues";
 import ShareCardButton from "@/components/ShareCardButton";
 
 const PRESET_COLORS = [
@@ -40,12 +40,22 @@ export default async function TeamPage({
 
   return (
     <div className="mx-auto max-w-lg">
+      {membership.spectator && (
+        <p className="mb-4 rounded-lg border border-indigo-900 bg-indigo-950/50 px-4 py-2 text-sm text-indigo-300">
+          🎙️ You&rsquo;re hosting this one without a team on the board. Want in? Save a
+          team below and you&rsquo;re playing.
+        </p>
+      )}
       <div className="card text-center">
         <p className="text-5xl">{membership.teamEmoji}</p>
         <p className="mt-2 text-xl font-black" style={{ color: membership.teamColor }}>
           {membership.teamName}
         </p>
-        <p className="text-xs text-slate-500">This is how you appear in standings and picks.</p>
+        <p className="text-xs text-slate-500">
+          {membership.spectator
+            ? "Hosting only — not shown in standings until you save a team."
+            : "This is how you appear in standings and picks."}
+        </p>
       </div>
 
       <section className="card mt-4">
@@ -103,6 +113,15 @@ export default async function TeamPage({
         </div>
         <button className="btn">Save team</button>
       </form>
+
+      {membership.role === "COMMISSIONER" && !membership.spectator && (
+        <form action={leaveBoardAsHost} className="mt-4 text-center">
+          <input type="hidden" name="leagueId" value={id} />
+          <button className="btn-ghost !text-xs">
+            🎙️ Step off the board — host without playing
+          </button>
+        </form>
+      )}
     </div>
   );
 }

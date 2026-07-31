@@ -386,6 +386,11 @@ export default async function AdminPage({
                   <span className="ml-2 text-xs text-slate-500">
                     {m.user.name} · {m.user.isGuest ? "🎟️ guest" : m.user.email}
                   </span>
+                  {m.spectator && (
+                    <span className="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                      🎙️ hosting — not on the board
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-3 text-right">
                   {m.role === "COMMISSIONER" ? (

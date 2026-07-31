@@ -31,6 +31,23 @@ export default async function SlatePicksPage({
   const { id, slateId } = await params;
   const membership = await requireMembership(id);
   const { league } = membership;
+
+  // Spectator hosts pick nothing until they put a team on the board.
+  if (membership.spectator) {
+    return (
+      <div className="mx-auto max-w-lg py-12 text-center">
+        <p className="text-5xl">🎙️</p>
+        <h1 className="mt-4 text-xl font-black">You&rsquo;re hosting, not playing (yet)</h1>
+        <p className="mt-2 text-sm text-slate-400">
+          Running the night doesn&rsquo;t put you on the board. Add a team and your picks
+          count like everyone else&rsquo;s.
+        </p>
+        <Link href={`/leagues/${id}/team`} className="btn mt-4 inline-flex">
+          🏆 Add my team
+        </Link>
+      </div>
+    );
+  }
   const meta = formatMeta(league.format);
   const isSurvivor = league.format === "survivor";
   const isConfidence = league.format === "confidence";

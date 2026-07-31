@@ -102,7 +102,7 @@ export async function computeVenueBoard(venueId: string): Promise<VenueBoard> {
       createdAt: league.createdAt,
       eventAt: league.eventAt ?? league.createdAt,
       upcoming: (league.eventAt ?? league.createdAt).getTime() > Date.now(),
-      players: league.memberships.length,
+      players: league.memberships.filter((m) => !m.spectator).length,
       finished,
       live: games.length > 0 && !finished,
       winners: finished && topPoints > 0

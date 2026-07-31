@@ -94,7 +94,8 @@ function computeStreak(league: LeagueForStandings, membershipId: string): number
 }
 
 export function computeStandingsFrom(league: LeagueForStandings): StandingsRow[] {
-  const rows = league.memberships.map((m): StandingsRow => {
+  // Spectator memberships (hosts who haven't added a team) never board.
+  const rows = league.memberships.filter((m) => !m.spectator).map((m): StandingsRow => {
     const base = {
       membershipId: m.id,
       teamName: m.teamName,
@@ -192,7 +193,7 @@ export type SlateScore = { membershipId: string; points: number; correct: number
 export function slateScores(league: LeagueForStandings, slateId: string): SlateScore[] {
   const slate = league.slates.find((s) => s.id === slateId);
   if (!slate) return [];
-  return league.memberships.map((m) => {
+  return league.memberships.filter((m) => !m.spectator).map((m) => {
     let points = 0;
     let correct = 0;
     let decided = 0;
@@ -310,7 +311,7 @@ export function buildRecaps(league: LeagueForStandings): Recap[] {
     if (league.format === "survivor") {
       const out: string[] = [];
       const through: string[] = [];
-      for (const m of league.memberships) {
+      for (const m of league.memberships.filter((mm) => !mm.spectator)) {
         const pick = slate.games.flatMap((g) => g.picks).find((p) => p.membershipId === m.id);
         const game = pick ? slate.games.find((g) => g.id === pick.gameId) : undefined;
         if (!pick || !game?.winner) out.push(nameOf.get(m.id)!);
@@ -321,7 +322,7 @@ export function buildRecaps(league: LeagueForStandings): Recap[] {
       if (out.length) lines.push(`💀 Eliminated: ${out.join(", ")}.`);
     } else {
       // Per-member slate score.
-      const scores = league.memberships.map((m) => {
+      const scores = league.memberships.filter((m) => !m.spectator).map((m) => {
         let pts = 0;
         let right = 0;
         for (const g of gamesDecided) {

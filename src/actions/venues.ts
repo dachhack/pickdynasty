@@ -148,7 +148,10 @@ async function createNight(
         create: {
           userId: user.id,
           role: "COMMISSIONER",
-          teamName: myTeam?.teamName ?? `${user.name}'s Team`,
+          // Hosts run the night without a team on the board unless they
+          // opt in — carried over from the previous night's choice.
+          spectator: myTeam ? myTeam.spectator : true,
+          teamName: myTeam?.teamName ?? `${user.name} (host)`,
           teamColor: myTeam?.teamColor ?? "#4f46e5",
           teamEmoji: myTeam?.teamEmoji ?? "🏆",
         },

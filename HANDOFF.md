@@ -113,7 +113,12 @@ clones last night's settings + venue geofence, night history with per-night
 winners, settings; nights can be PLANNED AHEAD with a date — League.eventAt
 — so slates get built early; pickCurrentNight in lib/venue.ts decides what
 the TV features: most recent night within a 30h window, else next planned,
-else last past); cross-night "bar regulars" board (src/lib/venue.ts,
+else last past). Hosts are SPECTATORS by default (Membership.spectator:
+commissioner rights, zero board presence — filtered in lib/league.ts
+standings/slateScores/recaps, venue players counts, reminder cron; picks
+page gated). Saving a team or joining via code/QR flips them onto the
+board; the choice carries to the next night; commissioners can "step off
+the board" from the team page. Cross-night "bar regulars" board (src/lib/venue.ts,
 aggregates by USER so claimed guests keep records; night wins → points;
 attendance tiers 3🍻/6🔥/10👑); permanent TV board /tv/venue/<venueCode>
 (auto-features newest night + join QR + regulars wall — the bar bookmarks
