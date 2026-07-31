@@ -149,8 +149,10 @@ export async function updateVenue(formData: FormData) {
 
 // ---------------- Venue logo (replaces the emoji mark when set) ----------------
 
-const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
-const LOGO_MAX_BYTES = 512 * 1024;
+// Uploads are normalized server-side (sharp): center-cropped square,
+// 256px, WebP — crisp at every size the mark renders, tiny in the DB.
+const LOGO_MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+const LOGO_SIZE_PX = 256;
 
 export async function uploadVenueLogo(formData: FormData) {
   const venueId = String(formData.get("venueId") ?? "");
@@ -160,20 +162,28 @@ export async function uploadVenueLogo(formData: FormData) {
   if (!(file instanceof File) || file.size === 0) {
     redirect(`/venues/${venueId}?logoError=empty`);
   }
-  if (!LOGO_TYPES.includes(file.type)) {
-    redirect(`/venues/${venueId}?logoError=type`);
-  }
-  if (file.size > LOGO_MAX_BYTES) {
+  if (file.size > LOGO_MAX_UPLOAD_BYTES) {
     redirect(`/venues/${venueId}?logoError=size`);
+  }
+
+  let logo: Uint8Array<ArrayBuffer>;
+  try {
+    const sharp = (await import("sharp")).default;
+    logo = new Uint8Array(
+      await sharp(Buffer.from(await file.arrayBuffer()))
+        .rotate() // apply EXIF orientation before it's stripped
+        .resize(LOGO_SIZE_PX, LOGO_SIZE_PX, { fit: "cover" })
+        .webp({ quality: 90 })
+        .toBuffer()
+    );
+  } catch {
+    // Not an image sharp can decode.
+    redirect(`/venues/${venueId}?logoError=type`);
   }
 
   await db.venue.update({
     where: { id: venueId },
-    data: {
-      logo: new Uint8Array(await file.arrayBuffer()),
-      logoType: file.type,
-      logoUpdatedAt: new Date(),
-    },
+    data: { logo, logoType: "image/webp", logoUpdatedAt: new Date() },
   });
   redirect(`/venues/${venueId}?saved=1`);
 }

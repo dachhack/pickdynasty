@@ -277,15 +277,15 @@ export default async function VenuePage({
         <h2 className="font-bold">🖼️ Venue logo</h2>
         <p className="mt-1 text-sm text-slate-400">
           Optional — replaces the {venue.emoji} icon with your own mark on the TV board,
-          the console, and your dashboard. Square images look best; PNG, JPEG, or WebP
-          up to 512 KB.
+          the console, and your dashboard. Any image up to 8 MB works — it&rsquo;s
+          center-cropped to a square and resized automatically.
         </p>
         {logoError && (
           <p className="mt-3 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
             {logoError === "type"
-              ? "That file type won't work — upload a PNG, JPEG, or WebP."
+              ? "Couldn't read that as an image — try a PNG, JPEG, or WebP."
               : logoError === "size"
-                ? "That image is over 512 KB — shrink it and try again."
+                ? "That file is over 8 MB — shrink it and try again."
                 : "Pick an image file first."}
           </p>
         )}
@@ -296,7 +296,7 @@ export default async function VenuePage({
             <input
               type="file"
               name="logo"
-              accept="image/png,image/jpeg,image/webp"
+              accept="image/*"
               required
               className="text-sm text-slate-400 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-200"
             />
