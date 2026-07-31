@@ -4,12 +4,8 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { computeVenueBoard, regularTier } from "@/lib/venue";
-import {
-  removeVenueLogo,
-  startNextNight,
-  updateVenue,
-  uploadVenueLogo,
-} from "@/actions/venues";
+import { removeVenueLogo, startNextNight, updateVenue } from "@/actions/venues";
+import LogoUploadForm from "@/components/LogoUploadForm";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
 import LocationField from "@/components/LocationField";
 import CopyField from "@/components/CopyField";
@@ -291,17 +287,7 @@ export default async function VenuePage({
         )}
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <VenueMark venue={venue} className="h-16 w-16 text-5xl" />
-          <form action={uploadVenueLogo} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="venueId" value={id} />
-            <input
-              type="file"
-              name="logo"
-              accept="image/*"
-              required
-              className="text-sm text-slate-400 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-200"
-            />
-            <button className="btn !text-sm">Upload</button>
-          </form>
+          <LogoUploadForm venueId={id} />
           {venue.logoUpdatedAt && (
             <form action={removeVenueLogo}>
               <input type="hidden" name="venueId" value={id} />
