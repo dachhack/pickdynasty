@@ -243,6 +243,19 @@ export async function uploadVenueLogo(formData: FormData) {
   redirect(`/venues/${venueId}?saved=1`);
 }
 
+/**
+ * Deletes a venue. Non-destructive to game history: nights keep existing
+ * as ordinary leagues (League.venueId is ON DELETE SET NULL) with their
+ * members, picks, and results — only the venue container, its regulars
+ * board, saved defaults, and logo go away.
+ */
+export async function deleteVenue(formData: FormData) {
+  const venueId = String(formData.get("venueId") ?? "");
+  await requireVenueHost(venueId);
+  await db.venue.delete({ where: { id: venueId } });
+  redirect("/dashboard?venueDeleted=1");
+}
+
 export async function removeVenueLogo(formData: FormData) {
   const venueId = String(formData.get("venueId") ?? "");
   await requireVenueHost(venueId);

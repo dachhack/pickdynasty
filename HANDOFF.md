@@ -130,7 +130,7 @@ console/TV/dashboard). Player: share cards
 (super admin, mlporritt@gmail.com via SUPER_ADMIN_EMAILS): stats, feed
 health, curated pick packs, league/user admin, global sync. Brand:
 trophy-check mark (public/icon.svg is the master), OG cards (static +
-dynamic invite unfurls). Themes: dark (default) / light / match-device,
+dynamic invite unfurls). Themes: light (DEFAULT) / dark / match-device,
 cycled from the header toggle, persisted in the ep_theme cookie
 (per-device, works for guests, no flash — the root layout stamps
 <html data-theme>). Light mode works by overriding the --color-* vars
@@ -163,7 +163,8 @@ hover:text-slate-100 (theme-safe) instead.
 
 ## Known gaps / backlog
 
-- Venue tier v2 follow-ups: no venue delete/transfer UI yet; venue geofence
+- Venue tier v2 follow-ups: no venue transfer UI yet (delete exists — nights
+  survive as ordinary leagues, League.venueId SET NULL); venue geofence
   edits apply to FUTURE nights only (running night edits live in its league
   admin — documented in UI); unclaimed guests appear once per night on the
   regulars wall (claiming merges them — by design, nudge copy exists).

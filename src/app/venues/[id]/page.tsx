@@ -4,7 +4,13 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { computeVenueBoard, regularTier } from "@/lib/venue";
-import { removeVenueLogo, startNextNight, updateVenue } from "@/actions/venues";
+import {
+  deleteVenue,
+  removeVenueLogo,
+  startNextNight,
+  updateVenue,
+} from "@/actions/venues";
+import ConfirmButton from "@/components/ConfirmButton";
 import LogoUploadForm from "@/components/LogoUploadForm";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
 import { SPORTS } from "@/lib/sports";
@@ -321,6 +327,23 @@ export default async function VenuePage({
             </form>
           )}
         </div>
+      </section>
+
+      <section className="card !border-red-950">
+        <h2 className="font-bold text-red-400">🗑️ Delete venue</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Removes the venue, its regulars board, TV link, and logo. Past nights are NOT
+          deleted — they stay in everyone&rsquo;s league list as ordinary leagues with all
+          picks and results intact. This can&rsquo;t be undone.
+        </p>
+        <form action={deleteVenue} className="mt-3">
+          <input type="hidden" name="venueId" value={id} />
+          <ConfirmButton
+            message={`Delete ${venue.name}? The regulars board and permanent TV link go away for good. Past nights stay as ordinary leagues.`}
+          >
+            Delete this venue
+          </ConfirmButton>
+        </form>
       </section>
     </div>
   );

@@ -9,11 +9,16 @@ import VenueMark from "@/components/VenueMark";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; claimed?: string; pwreset?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    claimed?: string;
+    pwreset?: string;
+    venueDeleted?: string;
+  }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const { error, claimed, pwreset } = await searchParams;
+  const { error, claimed, pwreset, venueDeleted } = await searchParams;
 
   const [memberships, venues] = await Promise.all([
     db.membership.findMany({
@@ -38,6 +43,11 @@ export default async function DashboardPage({
         </div>
       </div>
 
+      {venueDeleted && (
+        <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+          Venue deleted. Its past nights are still here as ordinary leagues.
+        </p>
+      )}
       {pwreset && (
         <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
           🔐 Password updated — you&rsquo;re logged in.
