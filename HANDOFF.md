@@ -117,7 +117,9 @@ slate score, own column highlighted), per-player totals pinned bottom,
 games scroll in a 70vh pane; cells show each pick marked ✓/✗ once
 decided, revealed per-game at lock (blind leagues show "•" until then;
 commissioner adminCanSeePicks respected); slate picker tabs when >1;
-season standings table kept below. Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
+season standings table kept below. The VENUE TV board uses the same grid
+(tv mode: bigger type, viewer-less so picks NEVER show before lock on the
+public screen, maxPlayers=8 with "+N more" note, live rows amber). Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
 quick-join (JWT cookie), venue geofence (haversine + 75m grace, deterrent
 not proof), public /tv/<code> leaderboard with join QR, account claim
 (email/password or Google; adoptGuestAccounts merges). Venue tier v2:

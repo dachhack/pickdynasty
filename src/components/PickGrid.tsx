@@ -21,11 +21,19 @@ export default function PickGrid({
   slateId,
   viewer,
   standings,
+  tv = false,
+  maxPlayers,
 }: {
   league: LeagueData;
   slateId: string;
-  viewer: { membershipId: string; isCommissioner: boolean };
+  // Omitted on public surfaces (TV board): no own-column highlight, no
+  // commissioner reveal — everyone sees picks only once games lock.
+  viewer?: { membershipId: string; isCommissioner: boolean };
   standings: StandingsRow[];
+  // TV mode: bigger type for 10-foot reading.
+  tv?: boolean;
+  // Cap the columns (TV width) — cut players noted under the table.
+  maxPlayers?: number;
 }) {
   const slate = league.slates.find((s) => s.id === slateId);
   if (!slate || slate.games.length === 0) {
@@ -44,7 +52,7 @@ export default function PickGrid({
 
   // Columns: players by slate score, season rank breaking ties. Spectator
   // hosts are already absent from standings/slateScores.
-  const players = standings
+  const allPlayers = standings
     .map((r) => ({
       ...r,
       slatePoints: scores.get(r.membershipId)?.points ?? 0,
@@ -55,9 +63,12 @@ export default function PickGrid({
         b.slatePoints - a.slatePoints ||
         (seasonRank.get(a.membershipId) ?? 0) - (seasonRank.get(b.membershipId) ?? 0)
     );
+  const players = maxPlayers ? allPlayers.slice(0, maxPlayers) : allPlayers;
+  const cut = allPlayers.length - players.length;
 
   // Sticky cells need an opaque background; bg-slate-900 tracks the theme.
   const stickyBg = "bg-slate-900";
+  const cellText = tv ? "text-sm" : "text-xs";
 
   return (
     <div className="card !p-0">
@@ -74,13 +85,13 @@ export default function PickGrid({
                 <th
                   key={p.membershipId}
                   className={`sticky top-0 z-20 border-b border-slate-800 ${stickyBg} px-2 py-2 text-center ${
-                    p.membershipId === viewer.membershipId ? "!bg-indigo-950" : ""
+                    p.membershipId === viewer?.membershipId ? "!bg-indigo-950" : ""
                   }`}
                   title={`${p.teamName} (${p.userName})`}
                 >
-                  <span className="block text-base leading-none">{p.teamEmoji}</span>
+                  <span className={`block leading-none ${tv ? "text-xl" : "text-base"}`}>{p.teamEmoji}</span>
                   <span
-                    className="mt-1 block max-w-[5.5rem] truncate text-xs font-semibold"
+                    className={`mt-1 block truncate font-semibold ${tv ? "max-w-[7rem] text-sm" : "max-w-[5.5rem] text-xs"}`}
                     style={{ color: p.teamColor }}
                   >
                     {p.teamName}
@@ -95,19 +106,19 @@ export default function PickGrid({
               const revealed =
                 !league.blindPicks ||
                 locked ||
-                (viewer.isCommissioner && league.adminCanSeePicks);
+                (viewer?.isCommissioner === true && league.adminCanSeePicks);
               const isProp = game.kind === "prop";
               const decided = Boolean(game.winner);
               const live = !isProp && game.homeScore != null && !game.winner;
               return (
-                <tr key={game.id}>
+                <tr key={game.id} className={live ? "bg-amber-950/20" : ""}>
                   <td
-                    className={`sticky left-0 z-10 max-w-[11rem] border-b border-r border-slate-800/60 ${stickyBg} px-3 py-2`}
+                    className={`sticky left-0 z-10 border-b border-r border-slate-800/60 ${stickyBg} px-3 py-2 ${tv ? "max-w-[13rem]" : "max-w-[11rem]"}`}
                   >
-                    <p className="truncate text-xs font-semibold">
+                    <p className={`truncate font-semibold ${tv ? "text-sm" : "text-xs"}`}>
                       {isProp ? `🎯 ${game.propLabel}` : `${game.awayTeam} @ ${game.homeTeam}`}
                     </p>
-                    <p className="text-[11px] text-slate-500">
+                    <p className={`text-slate-500 ${tv ? "text-xs" : "text-[11px]"}`}>
                       {isProp && `O/U ${game.line} · `}
                       {decided
                         ? isProp
@@ -122,7 +133,7 @@ export default function PickGrid({
                     const pick = game.picks.find(
                       (pk) => pk.membershipId === p.membershipId
                     );
-                    const mine = p.membershipId === viewer.membershipId;
+                    const mine = p.membershipId === viewer?.membershipId;
                     const show = revealed || mine;
                     let cell: React.ReactNode = "";
                     let cls = "text-slate-500";
@@ -164,7 +175,7 @@ export default function PickGrid({
                     return (
                       <td
                         key={p.membershipId}
-                        className={`border-b border-slate-800/40 px-2 py-2 text-center text-xs ${cls} ${
+                        className={`border-b border-slate-800/40 px-2 py-2 text-center ${cellText} ${cls} ${
                           mine && !decided ? "bg-indigo-950/30" : ""
                         }`}
                       >
@@ -186,8 +197,8 @@ export default function PickGrid({
               {players.map((p) => (
                 <td
                   key={p.membershipId}
-                  className={`sticky bottom-0 z-20 border-t border-slate-800 ${stickyBg} px-2 py-2 text-center text-sm font-black ${
-                    p.membershipId === viewer.membershipId ? "!bg-indigo-950" : ""
+                  className={`sticky bottom-0 z-20 border-t border-slate-800 ${stickyBg} px-2 py-2 text-center font-black ${tv ? "text-lg" : "text-sm"} ${
+                    p.membershipId === viewer?.membershipId ? "!bg-indigo-950" : ""
                   }`}
                 >
                   {isConfidence ? (
@@ -206,6 +217,11 @@ export default function PickGrid({
           </tfoot>
         </table>
       </div>
+      {cut > 0 && (
+        <p className="border-t border-slate-800 px-3 py-2 text-xs text-slate-500">
+          + {cut} more playing — the full board is on everyone&rsquo;s phone.
+        </p>
+      )}
     </div>
   );
 }

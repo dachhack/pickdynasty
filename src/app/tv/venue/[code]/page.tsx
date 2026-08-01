@@ -9,6 +9,7 @@ import {
 import { computeVenueBoard, pickCurrentNight, regularTier } from "@/lib/venue";
 import { formatMeta } from "@/lib/formats";
 import AutoRefresh from "@/components/AutoRefresh";
+import PickGrid from "@/components/PickGrid";
 import TvTicker from "@/components/TvTicker";
 import VenueMark from "@/components/VenueMark";
 
@@ -71,7 +72,6 @@ export default async function VenueTvPage({
         })
       : null;
 
-  const top = standings.slice(0, 10);
   const wall = regulars.slice(0, 10);
 
   return (
@@ -118,45 +118,26 @@ export default async function VenueTvPage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <section className="card !p-0 lg:col-span-3">
-          <h2 className="px-5 pt-5 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            🏆 Tonight&rsquo;s board
+        <section className="flex flex-col gap-2 lg:col-span-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            🧾 Tonight&rsquo;s board
           </h2>
-          <table className="mt-2 w-full">
-            <tbody>
-              {top.map((row, i) => (
-                <tr key={row.membershipId} className="border-t border-slate-800/50 text-lg">
-                  <td className="w-12 px-5 py-3 text-2xl font-black text-slate-500">
-                    {i === 0 ? "👑" : i + 1}
-                  </td>
-                  <td className="px-2 py-3">
-                    <span className="font-bold" style={{ color: row.teamColor }}>
-                      {row.teamEmoji} {row.teamName}
-                    </span>
-                    {row.streak >= 3 && (
-                      <span className="ml-2 rounded-full bg-orange-950 px-2 py-0.5 text-sm font-bold text-orange-300">
-                        🔥{row.streak}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right text-2xl font-black">{row.points}</td>
-                </tr>
-              ))}
-              {standings.length === 0 && (
-                <tr>
-                  <td className="px-5 py-10 text-center text-slate-500">
-                    {tonight
-                      ? "Nobody on the board yet — scan the code and be first."
-                      : "No game running right now."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          {standings.length > top.length && (
-            <p className="border-t border-slate-800 px-5 py-2 text-sm text-slate-500">
-              + {standings.length - top.length} more chasing the podium
-            </p>
+          {tonight && featured && standings.length > 0 ? (
+            <PickGrid
+              league={tonight}
+              slateId={featured.id}
+              standings={standings}
+              tv
+              maxPlayers={8}
+            />
+          ) : (
+            <div className="card">
+              <p className="py-8 text-center text-slate-500">
+                {tonight
+                  ? "Nobody on the board yet — scan the code and be first."
+                  : "No game running right now."}
+              </p>
+            </div>
           )}
         </section>
 
