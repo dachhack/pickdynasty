@@ -119,7 +119,10 @@ decided, revealed per-game at lock (blind leagues show "•" until then;
 commissioner adminCanSeePicks respected); slate picker tabs when >1;
 season standings table kept below. The VENUE TV board uses the same grid
 (tv mode: bigger type, viewer-less so picks NEVER show before lock on the
-public screen, maxPlayers=8 with "+N more" note, live rows amber). Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
+public screen, maxPlayers=10 with "+N more" note, live rows amber) at
+FULL WIDTH — the regulars wall moved into the bottom ticker as a second
+segment (games chip+items, then "🍻 Bar regulars" chip+ranked entries
+with 🏅wins/nights/tier; TvTicker regulars prop). Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
 quick-join (JWT cookie), venue geofence (haversine + 75m grace, deterrent
 not proof), public /tv/<code> leaderboard with join QR, account claim
 (email/password or Google; adoptGuestAccounts merges). Venue tier v2:

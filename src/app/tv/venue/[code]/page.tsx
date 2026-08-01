@@ -117,93 +117,55 @@ export default async function VenueTvPage({
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <section className="flex flex-col gap-2 lg:col-span-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            🧾 Tonight&rsquo;s board
-          </h2>
-          {tonight && featured && standings.length > 0 ? (
-            <PickGrid
-              league={tonight}
-              slateId={featured.id}
-              standings={standings}
-              tv
-              maxPlayers={8}
-            />
-          ) : (
-            <div className="card">
-              <p className="py-8 text-center text-slate-500">
-                {tonight
-                  ? "Nobody on the board yet — scan the code and be first."
-                  : "No game running right now."}
-              </p>
-            </div>
-          )}
-        </section>
-
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          <section className="card !p-0">
-            <h2 className="px-5 pt-5 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              🍻 Bar regulars · all-time
-            </h2>
-            <table className="mt-2 w-full">
-              <tbody>
-                {wall.map((r, i) => {
-                  const tier = regularTier(r.nights);
-                  return (
-                    <tr key={r.userId} className="border-t border-slate-800/50">
-                      <td className="w-10 px-5 py-2.5 font-black text-slate-500">{i + 1}</td>
-                      <td className="px-2 py-2.5">
-                        <span className="font-bold" style={{ color: r.teamColor }}>
-                          {r.teamEmoji} {r.teamName}
-                        </span>
-                        {tier && (
-                          <span className="ml-2 rounded-full bg-amber-950 px-2 py-0.5 text-xs font-bold text-amber-300">
-                            {tier.emoji} {tier.label}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-2.5 text-right text-sm text-slate-400">
-                        {r.nightWins > 0 && (
-                          <span className="mr-2 font-black text-amber-300">🏅{r.nightWins}</span>
-                        )}
-                        {r.nights} {r.nights === 1 ? "night" : "nights"}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {wall.length === 0 && (
-                  <tr>
-                    <td className="px-5 py-8 text-center text-sm text-slate-500">
-                      Play a night, get on the wall. Come back three times and
-                      you&rsquo;re officially a 🍻 Regular.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </section>
-
-        </div>
-      </div>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          🧾 Tonight&rsquo;s board
+        </h2>
+        {tonight && featured && standings.length > 0 ? (
+          <PickGrid
+            league={tonight}
+            slateId={featured.id}
+            standings={standings}
+            tv
+            maxPlayers={10}
+          />
+        ) : (
+          <div className="card">
+            <p className="py-8 text-center text-slate-500">
+              {tonight
+                ? "Nobody on the board yet — scan the code and be first."
+                : "No game running right now."}
+            </p>
+          </div>
+        )}
+      </section>
 
       <p className="text-center text-sm text-slate-600">
         Board refreshes automatically · ⚡ Epic Pick&rsquo;em
       </p>
 
-      {featured && tonight && (
-        <TvTicker
-          label={
-            (featuredStatus === "live"
-              ? "🔴 Live now"
-              : featuredStatus === "open"
-                ? "🟢 Picks open"
-                : "✅ Final") + ` · ${featured.name}`
-          }
-          games={featured.games}
-          fallbackSport={tonight.sport}
-        />
-      )}
+      <TvTicker
+        label={
+          featured
+            ? (featuredStatus === "live"
+                ? "🔴 Live now"
+                : featuredStatus === "open"
+                  ? "🟢 Picks open"
+                  : "✅ Final") + ` · ${featured.name}`
+            : ""
+        }
+        games={featured?.games ?? []}
+        fallbackSport={tonight?.sport ?? venue.sport}
+        regulars={wall.map((r) => ({
+          userId: r.userId,
+          teamName: r.teamName,
+          teamColor: r.teamColor,
+          teamEmoji: r.teamEmoji,
+          nights: r.nights,
+          nightWins: r.nightWins,
+          tier: regularTier(r.nights),
+        }))}
+      />
     </div>
   );
 }

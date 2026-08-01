@@ -59,35 +59,72 @@ function TickerItem({ g, fallbackSport }: { g: TickerGame; fallbackSport: string
   );
 }
 
+export type TickerRegular = {
+  userId: string;
+  teamName: string;
+  teamColor: string;
+  teamEmoji: string;
+  nights: number;
+  nightWins: number;
+  tier: { label: string; emoji: string } | null;
+};
+
 /**
  * Bottom-of-screen sports ticker for the TV boards: the featured slate's
- * games scroll continuously, ESPN-bottom-line style. Pure CSS animation
- * (see .ticker-track in globals.css) — the two identical halves make the
- * loop seamless, and score updates from the board's auto-refresh patch
- * text in place without restarting the scroll.
+ * games scroll continuously, ESPN-bottom-line style, followed by the
+ * all-time bar-regulars segment when provided (saves the wall a column).
+ * Pure CSS animation (see .ticker-track in globals.css) — the two
+ * identical halves make the loop seamless, and score updates from the
+ * board's auto-refresh patch text in place without restarting the scroll.
  */
 export default function TvTicker({
   label,
   games,
   fallbackSport,
+  regulars = [],
 }: {
   label: string;
   games: TickerGame[];
   fallbackSport: string;
+  regulars?: TickerRegular[];
 }) {
-  if (games.length === 0) return null;
-  const duration = Math.max(30, games.length * 8);
+  if (games.length === 0 && regulars.length === 0) return null;
+  const duration = Math.max(30, (games.length + regulars.length) * 7);
+
+  const chip = (text: string) => (
+    <span className="rounded-full bg-slate-800 px-3 py-1 text-sm font-bold uppercase tracking-wide text-slate-300">
+      {text}
+    </span>
+  );
 
   const half = (hidden: boolean) => (
     <div
       aria-hidden={hidden || undefined}
       className="flex min-w-full shrink-0 items-center gap-12 px-8"
     >
-      <span className="rounded-full bg-slate-800 px-3 py-1 text-sm font-bold uppercase tracking-wide text-slate-300">
-        {label}
-      </span>
+      {games.length > 0 && chip(label)}
       {games.map((g) => (
         <TickerItem key={g.id} g={g} fallbackSport={fallbackSport} />
+      ))}
+      {regulars.length > 0 && chip("🍻 Bar regulars · all-time")}
+      {regulars.map((r, i) => (
+        <span key={r.userId} className="flex items-center gap-2 whitespace-nowrap text-lg">
+          <span className="font-black text-slate-500">{i + 1}</span>
+          <span className="font-bold" style={{ color: r.teamColor }}>
+            {r.teamEmoji} {r.teamName}
+          </span>
+          {r.nightWins > 0 && (
+            <span className="font-black text-amber-300">🏅{r.nightWins}</span>
+          )}
+          <span className="text-sm text-slate-500">
+            {r.nights} {r.nights === 1 ? "night" : "nights"}
+          </span>
+          {r.tier && (
+            <span className="rounded-full bg-amber-950 px-2 py-0.5 text-xs font-bold text-amber-300">
+              {r.tier.emoji} {r.tier.label}
+            </span>
+          )}
+        </span>
       ))}
     </div>
   );
