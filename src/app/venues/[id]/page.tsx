@@ -3,18 +3,19 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { computeVenueBoard, pickCurrentNight, regularTier } from "@/lib/venue";
+import { computeVenueBoard, pickCurrentNight, regularTier, todayEt } from "@/lib/venue";
 import {
+  deleteNight,
   deleteVenue,
   planNight,
   removeVenueLogo,
-  startNextNight,
+  runNightNow,
   updateVenue,
 } from "@/actions/venues";
 import ConfirmButton from "@/components/ConfirmButton";
 import LogoUploadForm from "@/components/LogoUploadForm";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
-import { SPORTS } from "@/lib/sports";
+import { SPORTS, sportEmoji, sportLabel } from "@/lib/sports";
 import { FORMATS } from "@/lib/formats";
 import LocationField from "@/components/LocationField";
 import CopyField from "@/components/CopyField";
@@ -24,6 +25,13 @@ const nightFmt = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  timeZone: "America/New_York",
+});
+
+const timeFmt = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  hour: "numeric",
+  minute: "2-digit",
   timeZone: "America/New_York",
 });
 
@@ -38,10 +46,11 @@ export default async function VenuePage({
     created?: string;
     logoError?: string;
     planError?: string;
+    nightDeleted?: string;
   }>;
 }) {
   const { id } = await params;
-  const { saved, created, logoError, planError } = await searchParams;
+  const { saved, created, logoError, planError, nightDeleted } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const venue = await db.venue.findUnique({ where: { id } });
@@ -64,8 +73,13 @@ export default async function VenuePage({
       )}
       {created && (
         <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
-          🎉 Venue created — this console is home base. Start tonight&rsquo;s game below to
-          open your first board, and bookmark the TV link on the bar&rsquo;s screen.
+          🎉 Venue created — this console is home base. Create your first event below,
+          and bookmark the TV link on the bar&rsquo;s screen.
+        </p>
+      )}
+      {nightDeleted && (
+        <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">
+          Event deleted — the regulars board recomputed without it.
         </p>
       )}
 
@@ -80,71 +94,127 @@ export default async function VenuePage({
         </p>
       </div>
 
-      <section className="card">
-        <h2 className="font-bold">🌙 Game nights</h2>
-        {currentNight ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 p-3">
-            <div>
-              <p className="font-semibold">
-                {currentNight.upcoming && (
-                  <span className="mr-2 rounded-full bg-indigo-950 px-2 py-0.5 text-xs font-semibold text-indigo-300">
-                    🗓️ Up next
-                  </span>
-                )}
-                {currentNight.name}
-              </p>
-              <p className="text-xs text-slate-500">
-                {currentNight.players} {currentNight.players === 1 ? "player" : "players"} in ·{" "}
-                {currentNight.live
-                  ? "🔴 games on the board"
-                  : currentNight.finished
-                    ? "✅ final"
-                    : "🟢 gathering players"}{" "}
-                · this is what the TV board features
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Link href={`/leagues/${currentNight.leagueId}`} className="btn !text-sm">
-                Open night
-              </Link>
-              <Link
-                href={`/leagues/${currentNight.leagueId}/admin/slates`}
-                className="btn-ghost !text-sm"
-              >
-                Build slate
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-1 text-sm text-slate-400">
-            No nights yet. Each night is a fresh game (new join code) cloned from the last
-            one — regulars carry over automatically.
-          </p>
-        )}
-        {planError && (
-          <p className="mt-3 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
-            Pick a date for the night first.
-          </p>
-        )}
-        <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3">
-          <form action={startNextNight}>
-            <input type="hidden" name="venueId" value={id} />
-            <button className="btn">🍻 Start tonight&rsquo;s game</button>
-          </form>
+      <section className="card !p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+          <h2 className="font-bold">🗓️ Events</h2>
           <form action={planNight} className="flex items-end gap-2">
             <input type="hidden" name="venueId" value={id} />
-            <div>
-              <label className="label" htmlFor="date">Or plan ahead</label>
-              <input className="input" type="date" id="date" name="date" required />
-            </div>
-            <button className="btn-ghost">🗓️ Plan night</button>
+            <input
+              className="input !w-auto !py-1.5 !text-sm"
+              type="date"
+              name="date"
+              defaultValue={todayEt()}
+              required
+              aria-label="Event date"
+            />
+            <button className="btn !text-sm">➕ New event</button>
           </form>
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Planning a night creates its board now so you can build the slate early — the TV
-          switches to it on the day, and early birds can scan in and pick as soon as games
-          are on it.
+        <p className="px-5 pt-1 text-sm text-slate-400">
+          Each event is a fresh game night (new join code) cloned from the last one —
+          regulars carry over. Creating one opens its slate builder; the TV board features
+          the current event automatically (📺 marks it).
         </p>
+        {planError && (
+          <p className="mx-5 mt-3 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-sm text-red-300">
+            Pick a date for the event first.
+          </p>
+        )}
+        {nights.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-slate-500">
+            No events yet — pick a date and hit ➕ New event.
+          </p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-2">Date</th>
+                  <th className="px-2 py-2">First game</th>
+                  <th className="px-2 py-2 text-right">Slate</th>
+                  <th className="px-2 py-2">Sports</th>
+                  <th className="px-2 py-2">Status</th>
+                  <th className="px-5 py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nights.map((n) => (
+                  <tr key={n.leagueId} className="border-b border-slate-800/50 last:border-0">
+                    <td className="whitespace-nowrap px-5 py-3">
+                      <Link href={`/leagues/${n.leagueId}`} className="font-semibold hover:underline">
+                        {nightFmt.format(n.eventAt)}
+                      </Link>
+                      {currentNight?.leagueId === n.leagueId && (
+                        <span className="ml-2" title="On the TV board now">📺</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-3 text-slate-400">
+                      {n.firstGameAt ? timeFmt.format(n.firstGameAt) : "—"}
+                    </td>
+                    <td className="px-2 py-3 text-right text-slate-400">
+                      {n.items > 0 ? `${n.items} ${n.items === 1 ? "item" : "items"}` : "empty"}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-3 text-lg leading-none">
+                      {n.sports.length > 0
+                        ? n.sports.map((s) => (
+                            <span key={s} title={sportLabel(s)}>{sportEmoji(s)}</span>
+                          ))
+                        : <span className="text-sm text-slate-600">—</span>}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-3 text-xs">
+                      {n.finished ? (
+                        n.winners.length > 0 ? (
+                          <span className="text-amber-300" title={n.winners.join(", ")}>
+                            🏅 {n.winners.join(", ").slice(0, 24)}{n.winners.join(", ").length > 24 ? "…" : ""}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">✅ Final</span>
+                        )
+                      ) : n.live ? (
+                        <span className="text-amber-300">🔴 In progress</span>
+                      ) : n.upcoming ? (
+                        <span className="text-indigo-300">🗓️ Planned</span>
+                      ) : (
+                        <span className="text-emerald-300">🟢 Open</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/leagues/${n.leagueId}/admin/slates`}
+                          className="btn-ghost !px-2.5 !py-1 !text-xs"
+                        >
+                          ✏️ Edit
+                        </Link>
+                        {!n.finished && (
+                          <form action={runNightNow}>
+                            <input type="hidden" name="venueId" value={id} />
+                            <input type="hidden" name="leagueId" value={n.leagueId} />
+                            <ConfirmButton
+                              className="btn-ghost !px-2.5 !py-1 !text-xs"
+                              message="Run this event now? The TV board switches to it immediately."
+                            >
+                              ▶️ Run
+                            </ConfirmButton>
+                          </form>
+                        )}
+                        <form action={deleteNight}>
+                          <input type="hidden" name="venueId" value={id} />
+                          <input type="hidden" name="leagueId" value={n.leagueId} />
+                          <ConfirmButton
+                            message="Delete this event? Its games, picks, and results are gone for good and the regulars board recomputes without it."
+                          >
+                            🗑️
+                          </ConfirmButton>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="card">
@@ -215,53 +285,6 @@ export default async function VenuePage({
         )}
       </section>
 
-      <section className="card !p-0">
-        <h2 className="px-5 pt-5 font-bold">🗓️ Nights ({nights.length})</h2>
-        {nights.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-slate-500">No nights yet.</p>
-        ) : (
-          <table className="mt-3 w-full text-sm">
-            <tbody>
-              {nights.map((n) => (
-                <tr key={n.leagueId} className="border-t border-slate-800/50">
-                  <td className="px-5 py-3">
-                    <Link href={`/leagues/${n.leagueId}`} className="font-semibold hover:underline">
-                      {n.name}
-                    </Link>
-                    <p className="text-xs text-slate-500">
-                      {nightFmt.format(n.eventAt)} · {n.players}{" "}
-                      {n.players === 1 ? "player" : "players"}
-                    </p>
-                  </td>
-                  <td className="px-2 py-3 text-right text-xs">
-                    {n.finished ? (
-                      n.winners.length > 0 ? (
-                        <span className="text-amber-300">🏅 {n.winners.join(", ")}</span>
-                      ) : (
-                        <span className="text-slate-500">✅ Final</span>
-                      )
-                    ) : n.live ? (
-                      <span className="text-amber-300">🔴 In progress</span>
-                    ) : n.upcoming ? (
-                      <span className="text-indigo-300">🗓️ Planned</span>
-                    ) : (
-                      <span className="text-emerald-300">🟢 Open</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <Link
-                      href={`/tv/${n.inviteCode}`}
-                      className="text-xs text-slate-500 hover:text-slate-300"
-                    >
-                      📺 board
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
 
       <section className="card">
         <h2 className="font-bold">⚙️ Venue settings</h2>

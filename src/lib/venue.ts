@@ -46,7 +46,17 @@ export type NightSummary = {
   finished: boolean; // has games and every one is decided
   live: boolean; // has games, some undecided
   winners: string[]; // team names topping a finished night (ties share it)
+  // Events-grid columns:
+  firstGameAt: Date | null; // earliest start on the slate
+  items: number; // games + props on the night
+  sports: string[]; // distinct sport ids across the slate
 };
+
+/** Today's date (ET) as yyyy-mm-dd — for date-input defaults (pure render). */
+const isoDayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" });
+export function todayEt(): string {
+  return isoDayFmt.format(new Date());
+}
 
 export type VenueBoard = {
   regulars: RegularRow[];
@@ -110,6 +120,11 @@ export async function computeVenueBoard(venueId: string): Promise<VenueBoard> {
       players: league.memberships.filter((m) => !m.spectator).length,
       finished,
       live: games.length > 0 && !finished,
+      firstGameAt: games.length
+        ? games.reduce((min, g) => (g.startTime < min ? g.startTime : min), games[0].startTime)
+        : null,
+      items: games.length,
+      sports: [...new Set(games.map((g) => g.sport ?? league.sport))],
       winners: finished && topPoints > 0
         ? standings
             .filter((s) => s.points === topPoints)

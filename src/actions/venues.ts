@@ -160,17 +160,10 @@ async function createNight(
   });
 }
 
-/** Starts tonight's game and heads straight to the slate builder. */
-export async function startNextNight(formData: FormData) {
-  const venueId = String(formData.get("venueId") ?? "");
-  const { user, venue } = await requireVenueHost(venueId);
-  const league = await createNight(venue, user, new Date());
-  redirect(`/leagues/${league.id}/admin/slates`);
-}
-
 /**
- * Plans a FUTURE night so its slate can be built ahead of time. The TV
- * board keeps featuring the right night day-of (see pickCurrentNight).
+ * Creates an event night for a chosen date (today included) so its slate
+ * can be built ahead of time. The TV board features the right night day-of
+ * (see pickCurrentNight); "Run" can pull a planned night live early.
  */
 export async function planNight(formData: FormData) {
   const venueId = String(formData.get("venueId") ?? "");
@@ -186,6 +179,34 @@ export async function planNight(formData: FormData) {
 
   const league = await createNight(venue, user, eventAt);
   redirect(`/leagues/${league.id}/admin/slates`);
+}
+
+/**
+ * "Run" an event now: stamps its date to this moment so pickCurrentNight
+ * features it — the TV board switches to it on the next refresh. Handy for
+ * kicking off a planned night early (or rescuing a mis-dated one).
+ */
+export async function runNightNow(formData: FormData) {
+  const venueId = String(formData.get("venueId") ?? "");
+  const leagueId = String(formData.get("leagueId") ?? "");
+  await requireVenueHost(venueId);
+  const night = await db.league.findFirst({ where: { id: leagueId, venueId } });
+  if (!night) redirect(`/venues/${venueId}`);
+  await db.league.update({ where: { id: night.id }, data: { eventAt: new Date() } });
+  redirect(`/leagues/${night.id}`);
+}
+
+/**
+ * Deletes one event night — the league and everything on it (games, picks,
+ * memberships) via cascade. The venue and its other nights are untouched;
+ * the regulars board recomputes without it.
+ */
+export async function deleteNight(formData: FormData) {
+  const venueId = String(formData.get("venueId") ?? "");
+  const leagueId = String(formData.get("leagueId") ?? "");
+  await requireVenueHost(venueId);
+  await db.league.deleteMany({ where: { id: leagueId, venueId } });
+  redirect(`/venues/${venueId}?nightDeleted=1`);
 }
 
 /** Venue settings: name/emoji + the saved geofence stamped onto FUTURE nights. */

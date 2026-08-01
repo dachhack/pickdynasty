@@ -145,9 +145,12 @@ League.venueId, fresh invite code). TWO entry paths: venue-first
 (/venues/new — name/emoji/sport/format defaults + optional geofence, then
 start nights from the console; "+ New venue" on dashboard, cross-link on
 /leagues/new) or promoted from league admin ("make this a recurring
-venue", which captures the league's sport/format as the venue defaults); host console /venues/[id] (start tonight's game
-clones last night's settings + venue geofence, night history with per-night
-winners, settings; nights can be PLANNED AHEAD with a date — League.eventAt
+venue", which captures the league's sport/format as the venue defaults); host console /venues/[id] (EVENTS GRID: date · first-game time · slate
+item count · sports · status per night, ✏️ Edit → slate builder, ▶️ Run →
+stamps eventAt=now so the TV switches to it, 🗑️ delete-with-confirm;
+"➕ New event" + date input (default today, todayEt in lib/venue) replaces
+the old start-tonight/plan-ahead pair — all creation goes through
+planNight; new nights clone last night's settings + venue geofence; nights can be PLANNED AHEAD with a date — League.eventAt
 — so slates get built early; pickCurrentNight in lib/venue.ts decides what
 the TV features: most recent night within a 30h window, else next planned,
 else last past). Hosts are SPECTATORS by default (Membership.spectator:
