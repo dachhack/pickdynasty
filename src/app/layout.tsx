@@ -78,13 +78,18 @@ export default async function RootLayout({
     <html lang="en" data-theme={theme} className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-            <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2 text-lg font-black tracking-tight">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-3">
+            <Link
+              href={user ? "/dashboard" : "/"}
+              className="flex shrink-0 items-center gap-2 whitespace-nowrap text-base font-black tracking-tight sm:text-lg"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/icon.svg" alt="" className="h-7 w-7" />
               Epic<span className="text-indigo-400">Pick&rsquo;em</span>
             </Link>
-            <nav className="flex items-center gap-3 text-sm">
+            {/* whitespace-nowrap inherits — keeps "My Leagues"/"Sign out"
+                from breaking mid-label on narrow phones */}
+            <nav className="flex items-center gap-2.5 whitespace-nowrap text-xs sm:gap-3 sm:text-sm">
               {user ? (
                 <>
                   <Link href="/dashboard" className="text-slate-300 hover:text-slate-100">

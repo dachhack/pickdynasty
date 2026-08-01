@@ -83,8 +83,7 @@ export default async function DashboardPage({
                   <VenueMark venue={v} className="h-7 w-7 text-xl" /> {v.name}
                 </h3>
                 <p className="mt-1 text-sm text-slate-400">
-                  {v.leagues.length} {v.leagues.length === 1 ? "night" : "nights"} · start
-                  tonight&rsquo;s game, regulars board, TV link
+                  {`${v.leagues.length} ${v.leagues.length === 1 ? "night" : "nights"} · start tonight’s game, regulars board, TV link`}
                 </p>
               </Link>
             ))}

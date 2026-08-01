@@ -46,12 +46,13 @@ export default async function LeagueLayout({
           </p>
         </div>
       </div>
-      <nav className="mt-5 flex gap-1 overflow-x-auto border-b border-slate-800 pb-px">
+      {/* Compact on phones so every tab fits without horizontal scrolling. */}
+      <nav className="mt-5 flex gap-0.5 overflow-x-auto border-b border-slate-800 pb-px sm:gap-1">
         {tabs.map((t) => (
           <Link
             key={t.href}
             href={t.href}
-            className="whitespace-nowrap rounded-t-lg px-4 py-2 text-sm font-semibold text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+            className="whitespace-nowrap rounded-t-lg px-1.5 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-900 hover:text-slate-100 sm:px-4 sm:text-sm"
           >
             {t.label}
           </Link>

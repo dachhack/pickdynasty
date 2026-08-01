@@ -114,19 +114,19 @@ export default async function LeagueHome({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wide text-slate-500">
-              <th className="px-4 py-3">#</th>
-              <th className="px-4 py-3">Team</th>
+              <th className="px-2 py-3 sm:px-4">#</th>
+              <th className="px-2 py-3 sm:px-4">Team</th>
               {isSurvivor ? (
                 <>
-                  <th className="px-4 py-3 text-right">Status</th>
-                  <th className="px-4 py-3 text-right">Weeks survived</th>
+                  <th className="px-2 py-3 text-right sm:px-4">Status</th>
+                  <th className="whitespace-nowrap px-2 py-3 text-right sm:px-4">Weeks survived</th>
                 </>
               ) : (
                 <>
-                  <th className="px-4 py-3 text-right">{isConfidence ? "Points" : "Correct"}</th>
-                  {isConfidence && <th className="px-4 py-3 text-right">Correct</th>}
-                  <th className="px-4 py-3 text-right">Decided</th>
-                  <th className="px-4 py-3 text-right">Win %</th>
+                  <th className="px-2 py-3 text-right sm:px-4">{isConfidence ? "Points" : "Correct"}</th>
+                  {isConfidence && <th className="hidden px-4 py-3 text-right sm:table-cell">Correct</th>}
+                  <th className="hidden px-4 py-3 text-right sm:table-cell">Decided</th>
+                  <th className="whitespace-nowrap px-2 py-3 text-right sm:px-4">Win %</th>
                 </>
               )}
             </tr>
@@ -139,7 +139,7 @@ export default async function LeagueHome({
                   row.membershipId === membership.id ? "bg-indigo-950/30" : ""
                 } ${isSurvivor && !row.alive ? "opacity-50" : ""}`}
               >
-                <td className="px-4 py-3 font-bold text-slate-500">
+                <td className="px-2 py-3 font-bold text-slate-500 sm:px-4">
                   {i + 1}
                   {movement && (movement.get(row.membershipId) ?? 0) !== 0 && (
                     <span
@@ -153,7 +153,7 @@ export default async function LeagueHome({
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-2 py-3 sm:px-4">
                   <span className="font-semibold" style={{ color: row.teamColor }}>
                     {row.teamEmoji} {row.teamName}
                   </span>
@@ -165,11 +165,11 @@ export default async function LeagueHome({
                       🔥{row.streak}
                     </span>
                   )}
-                  <span className="ml-2 text-xs text-slate-500">{row.userName}</span>
+                  <span className="ml-2 hidden text-xs text-slate-500 sm:inline">{row.userName}</span>
                 </td>
                 {isSurvivor ? (
                   <>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-2 py-3 text-right sm:px-4">
                       {row.alive ? (
                         <span className="rounded-full bg-emerald-950 px-2 py-0.5 text-xs font-semibold text-emerald-300">Alive</span>
                       ) : (
@@ -178,14 +178,14 @@ export default async function LeagueHome({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold">{row.points}</td>
+                    <td className="px-2 py-3 text-right font-bold sm:px-4">{row.points}</td>
                   </>
                 ) : (
                   <>
-                    <td className="px-4 py-3 text-right font-bold">{row.points}</td>
-                    {isConfidence && <td className="px-4 py-3 text-right text-slate-400">{row.correct}</td>}
-                    <td className="px-4 py-3 text-right text-slate-400">{row.decided}</td>
-                    <td className="px-4 py-3 text-right text-slate-400">{(row.pct * 100).toFixed(0)}%</td>
+                    <td className="px-2 py-3 text-right font-bold sm:px-4">{row.points}</td>
+                    {isConfidence && <td className="hidden px-4 py-3 text-right text-slate-400 sm:table-cell">{row.correct}</td>}
+                    <td className="hidden px-4 py-3 text-right text-slate-400 sm:table-cell">{row.decided}</td>
+                    <td className="px-2 py-3 text-right text-slate-400 sm:px-4">{(row.pct * 100).toFixed(0)}%</td>
                   </>
                 )}
               </tr>

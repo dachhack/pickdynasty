@@ -113,7 +113,7 @@ export default function PickGrid({
               return (
                 <tr key={game.id} className={live ? "bg-amber-950/20" : ""}>
                   <td
-                    className={`sticky left-0 z-10 border-b border-r border-slate-800/60 ${stickyBg} px-3 py-2 ${tv ? "max-w-[13rem]" : "max-w-[11rem]"}`}
+                    className={`sticky left-0 z-10 border-b border-r border-slate-800/60 ${stickyBg} px-3 py-2 ${tv ? "max-w-[13rem]" : "max-w-[8.5rem] sm:max-w-[11rem]"}`}
                   >
                     <p className={`flex items-center gap-1.5 font-semibold ${tv ? "text-sm" : "text-xs"}`}>
                       {isProp && game.propImage && (
