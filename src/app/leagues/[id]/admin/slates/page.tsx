@@ -84,11 +84,18 @@ export default async function AdminSlatesPage({
                 : "Props aren't available in survivor or spread formats."}
         </p>
       )}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Slates</h2>
-        <Link href={`/leagues/${id}/admin/slates/new`} className="btn">
-          ➕ New slate
-        </Link>
+        <div className="flex items-center gap-2">
+          {me.league.venueId && (
+            <Link href={`/venues/${me.league.venueId}`} className="btn-ghost">
+              ← Back to venue
+            </Link>
+          )}
+          <Link href={`/leagues/${id}/admin/slates/new`} className="btn">
+            ➕ New slate
+          </Link>
+        </div>
       </div>
       {(autoScores || fantasyLink) && (
         <form action={syncEspnResults} className="card flex flex-wrap items-center justify-between gap-3">
