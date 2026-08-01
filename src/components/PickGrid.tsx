@@ -219,7 +219,7 @@ export default function PickGrid({
       </div>
       {cut > 0 && (
         <p className="border-t border-slate-800 px-3 py-2 text-xs text-slate-500">
-          + {cut} more playing — the full board is on everyone&rsquo;s phone.
+          {`+ ${cut} more playing — the full board is on everyone’s phone.`}
         </p>
       )}
     </div>
