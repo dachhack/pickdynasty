@@ -24,6 +24,9 @@ ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 COPY --from=builder /app ./
 EXPOSE 3000
-# Apply pending migrations, then serve. DATABASE_URL/DIRECT_URL/SESSION_SECRET/
-# CRON_SECRET come from `fly secrets set`.
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+# Serve immediately — migrations run from the deploy workflows BEFORE the
+# image rolls (fail-fast step), so a boot-time `migrate deploy` only added
+# ~10s to every cold start. If you ever `fly deploy` by hand, run
+# `npx prisma migrate deploy` yourself first. DATABASE_URL/DIRECT_URL/
+# SESSION_SECRET/CRON_SECRET come from `fly secrets set`.
+CMD ["npm", "run", "start"]

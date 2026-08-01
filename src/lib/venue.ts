@@ -84,10 +84,15 @@ export async function computeVenueBoard(venueId: string): Promise<VenueBoard> {
     select: { id: true },
   });
 
+  // Load every night in parallel — sequential loads made big venues
+  // noticeably slow to render.
+  const leagues = await Promise.all(
+    nightIds.map((n) => loadLeagueForStandings(n.id))
+  );
+
   const rows = new Map<string, RegularRow>();
   const nights: NightSummary[] = [];
-  for (const night of nightIds) {
-    const league = await loadLeagueForStandings(night.id);
+  for (const league of leagues) {
     const standings = computeStandingsFrom(league);
     const games = league.slates.flatMap((s) => s.games);
     const finished = games.length > 0 && games.every((g) => g.winner);

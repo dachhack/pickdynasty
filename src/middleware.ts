@@ -13,7 +13,15 @@ export async function middleware(request: NextRequest) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return NextResponse.next({ request });
+  // No Supabase session cookies (guests, public TV boards, signed-out
+  // visitors) → nothing to refresh; skip the network round-trip to
+  // Supabase auth that would otherwise tax every request.
+  const hasSupabaseSession = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-"));
+  if (!url || !anonKey || !hasSupabaseSession) {
+    return NextResponse.next({ request });
+  }
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(url, anonKey, {

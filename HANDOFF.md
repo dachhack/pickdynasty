@@ -20,9 +20,13 @@ sign-in, and branded email all working.
 - Git convention this project has used: develop on the designated feature
   branch, push every commit to BOTH the branch and `main` (`git push origin
   <branch>:main`). `main` is the default branch and drives staging.
-- Images run `prisma migrate deploy` on boot; the deploy workflows also run
-  it from the runner first as a fail-fast (and "Verify production database"
-  workflow does only that step, for checking DB secrets).
+- Migrations run from the DEPLOY WORKFLOWS only (fail-fast runner step;
+  "Verify production database" workflow does just that step for checking DB
+  secrets). The image does NOT migrate on boot anymore — it added ~10s to
+  every cold start. Manual `fly deploy` must run `npx prisma migrate
+  deploy` first. Cold starts: fly.toml keeps min 1 machine warm and
+  SUSPENDS (not stops) the rest; middleware skips the Supabase auth
+  round-trip for requests with no sb-* cookies (guests/TV/anonymous).
 - Migrations are HAND-WRITTEN (prisma migrate dev's shadow DB fights RLS).
   Pattern: write SQL in prisma/migrations/<stamp>_<name>/migration.sql,
   matching schema.prisma edit, `npx prisma@6 migrate deploy`. Enable RLS on

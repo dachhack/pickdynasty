@@ -16,9 +16,11 @@ primary_region = "iad"
 [http_service]
   internal_port = 3000
   force_https = true
-  auto_stop_machines = "stop"
+  # One machine stays warm so the first visitor never eats a cold boot;
+  # the rest SUSPEND (resumes in ~1s) instead of stopping (full boot).
+  auto_stop_machines = "suspend"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
 [[vm]]
   size = "shared-cpu-1x"
