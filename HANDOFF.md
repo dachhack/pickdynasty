@@ -111,7 +111,13 @@ handles "J. Allen"). Cron sync grades props via lib/sync (which must keep
 kind:"match" on scoreboard matching — a prop shares its game's externalId
 and would otherwise get the GAME's winner stamped on it). Hand-entered
 games' props = manual grading via the Over/Under/Push result select.
-Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
+League home leaderboard is a POOL-SHEET GRID (components/PickGrid.tsx):
+games vertical (sticky left), players horizontal (sticky top, sorted by
+slate score, own column highlighted), per-player totals pinned bottom,
+games scroll in a 70vh pane; cells show each pick marked ✓/✗ once
+decided, revealed per-game at lock (blind leagues show "•" until then;
+commissioner adminCanSeePicks respected); slate picker tabs when >1;
+season standings table kept below. Fantasy: Sleeper + ESPN H2H matchup pick'em. Event nights: guest
 quick-join (JWT cookie), venue geofence (haversine + 75m grace, deterrent
 not proof), public /tv/<code> leaderboard with join QR, account claim
 (email/password or Google; adoptGuestAccounts merges). Venue tier v2:
