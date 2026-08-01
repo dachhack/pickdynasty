@@ -20,6 +20,10 @@ export type TickerGame = {
   propLabel?: string | null;
   line?: number | null;
   propActual?: number | null;
+  // ESPN CDN art.
+  homeLogo?: string | null;
+  awayLogo?: string | null;
+  propImage?: string | null;
 };
 
 function TickerItem({ g, fallbackSport }: { g: TickerGame; fallbackSport: string }) {
@@ -28,7 +32,16 @@ function TickerItem({ g, fallbackSport }: { g: TickerGame; fallbackSport: string
       g.winner === "AWAY" ? "Over ✓" : g.winner === "HOME" ? "Under ✓" : "Push";
     return (
       <span className="flex items-center gap-2 whitespace-nowrap text-lg">
-        <span>🎯</span>
+        {g.propImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={g.propImage}
+            alt=""
+            className="h-8 w-8 shrink-0 rounded-full bg-slate-800 object-cover"
+          />
+        ) : (
+          <span>🎯</span>
+        )}
         <span className="font-semibold">{g.propLabel}</span>
         <span className="font-mono font-black">O/U {g.line}</span>
         <span className="text-sm text-slate-500">
@@ -40,18 +53,24 @@ function TickerItem({ g, fallbackSport }: { g: TickerGame; fallbackSport: string
     );
   }
   const live = g.homeScore != null && !g.winner;
-  const side = (team: string, score: number | null, won: boolean) => (
-    <span className={g.winner ? (won ? "font-black" : "text-slate-500") : "font-semibold"}>
+  const side = (team: string, score: number | null, won: boolean, logo?: string | null) => (
+    <span
+      className={`flex items-center gap-1.5 ${g.winner ? (won ? "font-black" : "text-slate-500") : "font-semibold"}`}
+    >
+      {logo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logo} alt="" className="h-6 w-6 shrink-0" />
+      )}
       {team}
-      {score != null && <span className="ml-1.5 font-mono font-black">{score}</span>}
+      {score != null && <span className="ml-0.5 font-mono font-black">{score}</span>}
     </span>
   );
   return (
     <span className="flex items-center gap-2 whitespace-nowrap text-lg">
-      <span>{sportEmoji(g.sport ?? fallbackSport)}</span>
-      {side(g.awayTeam, g.awayScore, g.winner === "AWAY")}
+      {!g.awayLogo && <span>{sportEmoji(g.sport ?? fallbackSport)}</span>}
+      {side(g.awayTeam, g.awayScore, g.winner === "AWAY", g.awayLogo)}
       <span className="text-slate-600">@</span>
-      {side(g.homeTeam, g.homeScore, g.winner === "HOME")}
+      {side(g.homeTeam, g.homeScore, g.winner === "HOME", g.homeLogo)}
       <span className="text-sm text-slate-500">
         {g.winner ? "Final" : live ? "🔴 LIVE" : `${kickFmt.format(g.startTime)} ET`}
       </span>

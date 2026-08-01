@@ -81,8 +81,14 @@ export default async function SlatePicksPage({
       id: game.id,
       homeTeam: isProp ? `Under ${game.line}` : game.homeTeam,
       awayTeam: isProp ? `Over ${game.line}` : game.awayTeam,
+      homeLogo: isProp ? null : game.homeLogo,
+      awayLogo: isProp ? null : game.awayLogo,
       prop: isProp
-        ? { label: game.propLabel ?? "Player prop", actual: game.propActual }
+        ? {
+            label: game.propLabel ?? "Player prop",
+            actual: game.propActual,
+            image: game.propImage,
+          }
         : null,
       startTimeLabel: fmt.format(game.startTime),
       locked,

@@ -25,6 +25,17 @@ export function espnSupported(sport: string): boolean {
   return sport in ESPN_PATHS;
 }
 
+/**
+ * Accepts an image URL only from ESPN's CDN — client-supplied logo fields
+ * (slate builder payloads) go through this so nobody can plant arbitrary
+ * URLs in game rows.
+ */
+export function safeEspnImage(url: unknown): string | null {
+  return typeof url === "string" && url.startsWith("https://a.espncdn.com/")
+    ? url.slice(0, 300)
+    : null;
+}
+
 // Sports whose schedules are organized in numbered weeks (ESPN supports
 // querying them directly by week). Everything else imports by date range.
 export const WEEKLY_SPORTS: Record<string, { maxWeek: number }> = {
@@ -51,6 +62,9 @@ export type EspnGame = {
   // AP poll rank at game time (1–25), college sports only.
   homeRank: number | null;
   awayRank: number | null;
+  // Team logo CDN URLs (a.espncdn.com), when ESPN provides them.
+  homeLogo: string | null;
+  awayLogo: string | null;
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -172,6 +186,8 @@ async function fetchAndParse(url: string): Promise<EspnGame[]> {
       spread: typeof rawSpread === "number" ? rawSpread : null,
       homeRank: rank(home),
       awayRank: rank(away),
+      homeLogo: typeof home.team?.logo === "string" ? home.team.logo : null,
+      awayLogo: typeof away.team?.logo === "string" ? away.team.logo : null,
     });
   }
   games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
@@ -261,6 +277,9 @@ export async function fetchTeamSchedule(
       spread: null,
       homeRank: null,
       awayRank: null,
+      // Schedule endpoint nests logos as an array, not the flat `logo`.
+      homeLogo: home.team?.logos?.[0]?.href ?? null,
+      awayLogo: away.team?.logos?.[0]?.href ?? null,
     });
   }
   games.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());

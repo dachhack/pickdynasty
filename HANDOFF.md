@@ -111,6 +111,16 @@ handles "J. Allen"). Cron sync grades props via lib/sync (which must keep
 kind:"match" on scoreboard matching — a prop shares its game's externalId
 and would otherwise get the GAME's winner stamped on it). Hand-entered
 games' props = manual grading via the Over/Under/Push result select.
+ESPN CDN ART (a.espncdn.com, hotlinked — same as Drip): Game.homeLogo/
+awayLogo captured at every import path (scoreboard/schedule parse, wizard,
+builder — client-sent builder URLs validated by safeEspnImage; curated
+pack rows have none) and BACKFILLED by sync onto older games;
+Game.propImage headshots resolve at addProp for NFL (Sleeper espn_id
+bridge in lib/props.ts) and backfill from the boxscore athlete.headshot
+once a game starts for other sports (soccer has none). Rendered in pick
+boards, PickGrid rows, and the ticker, text/🎯 fallback when null. NOTE:
+images can't load in the dev container's headless browser (proxy) — CDN
+verified reachable via curl; verify pixels on staging.
 League home leaderboard is a POOL-SHEET GRID (components/PickGrid.tsx):
 games vertical (sticky left), players horizontal (sticky top, sorted by
 slate score, own column highlighted), per-player totals pinned bottom,

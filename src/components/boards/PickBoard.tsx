@@ -138,7 +138,21 @@ export default function PickBoard({
               <p className="text-xs text-slate-500">{game.startTimeLabel}</p>
               <StatusChip game={game} isSpread={isSpread} />
             </div>
-            {game.prop && <p className="mt-2 text-sm font-bold">🎯 {game.prop.label}</p>}
+            {game.prop && (
+              <p className="mt-2 flex items-center gap-1.5 text-sm font-bold">
+                {game.prop.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={game.prop.image}
+                    alt=""
+                    className="h-7 w-7 shrink-0 rounded-full bg-slate-800 object-cover"
+                  />
+                ) : (
+                  <span>🎯</span>
+                )}
+                {game.prop.label}
+              </p>
+            )}
             <div className="mt-3 grid grid-cols-2 gap-3">
               {(["AWAY", "HOME"] as const).map((side) => {
                 const team = side === "HOME" ? game.homeTeam : game.awayTeam;
@@ -160,12 +174,22 @@ export default function PickBoard({
                       won ? "ring-1 ring-emerald-500" : ""
                     }`}
                   >
-                    <span>
-                      {side === "AWAY" && !game.isFantasy && !game.prop ? "@ " : ""}
-                      {team}
-                      {isSpread && <span className="text-slate-400">{spreadText(side, game.spread)}</span>}
-                      {burned && " 💀"}
-                      {won && " ✅"}
+                    <span className="flex items-center gap-1.5">
+                      {(side === "HOME" ? game.homeLogo : game.awayLogo) && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={(side === "HOME" ? game.homeLogo : game.awayLogo)!}
+                          alt=""
+                          className="h-5 w-5 shrink-0"
+                        />
+                      )}
+                      <span>
+                        {side === "AWAY" && !game.isFantasy && !game.prop ? "@ " : ""}
+                        {team}
+                        {isSpread && <span className="text-slate-400">{spreadText(side, game.spread)}</span>}
+                        {burned && " 💀"}
+                        {won && " ✅"}
+                      </span>
                     </span>
                     <span
                       className={`ml-2 inline-block h-4 w-4 shrink-0 rounded-full border transition-all ${

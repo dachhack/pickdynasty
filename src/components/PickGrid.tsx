@@ -115,8 +115,26 @@ export default function PickGrid({
                   <td
                     className={`sticky left-0 z-10 border-b border-r border-slate-800/60 ${stickyBg} px-3 py-2 ${tv ? "max-w-[13rem]" : "max-w-[11rem]"}`}
                   >
-                    <p className={`truncate font-semibold ${tv ? "text-sm" : "text-xs"}`}>
-                      {isProp ? `🎯 ${game.propLabel}` : `${game.awayTeam} @ ${game.homeTeam}`}
+                    <p className={`flex items-center gap-1.5 font-semibold ${tv ? "text-sm" : "text-xs"}`}>
+                      {isProp && game.propImage && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={game.propImage}
+                          alt=""
+                          className={`shrink-0 rounded-full bg-slate-800 object-cover ${tv ? "h-6 w-6" : "h-5 w-5"}`}
+                        />
+                      )}
+                      {!isProp && game.awayLogo && game.homeLogo && (
+                        <span className="flex shrink-0 items-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={game.awayLogo} alt="" className={tv ? "h-5 w-5" : "h-4 w-4"} />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={game.homeLogo} alt="" className={`-ml-1 ${tv ? "h-5 w-5" : "h-4 w-4"}`} />
+                        </span>
+                      )}
+                      <span className="truncate">
+                        {isProp ? `${game.propImage ? "" : "🎯 "}${game.propLabel}` : `${game.awayTeam} @ ${game.homeTeam}`}
+                      </span>
                     </p>
                     <p className={`text-slate-500 ${tv ? "text-xs" : "text-[11px]"}`}>
                       {isProp && `O/U ${game.line} · `}

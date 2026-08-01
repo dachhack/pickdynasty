@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { makeInviteCode, requireCommissioner } from "@/lib/league";
-import { propFamily, propStat, suggestLine } from "@/lib/props";
+import { nflHeadshot, propFamily, propStat, suggestLine } from "@/lib/props";
 import { VENUE_RADIUS_OPTIONS } from "@/lib/geo";
 
 export async function updateLeagueSettings(formData: FormData) {
@@ -235,6 +235,9 @@ export async function addProp(formData: FormData) {
       propPlayer: playerName,
       propStat: def.key,
       line,
+      // NFL faces resolve instantly via Sleeper's espn_id; other sports
+      // backfill from the boxscore once the game starts.
+      propImage: sport === "nfl" ? await nflHeadshot(playerName) : null,
     },
   });
   revalidatePath(`/leagues/${leagueId}/admin/slates`);

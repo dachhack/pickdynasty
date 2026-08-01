@@ -213,5 +213,8 @@ export async function resolveCuratedPack(dbId: string, includeUnpublished = fals
     spread: g.spread,
     homeRank: null,
     awayRank: null,
+    // Curated pack rows don't store logos; the sync backfills them later.
+    homeLogo: null,
+    awayLogo: null,
   }));
 }

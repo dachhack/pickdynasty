@@ -46,6 +46,8 @@ function serialize(games: (EspnGame & { sport?: string })[], fallbackSport: stri
     homeScore: g.homeScore,
     awayScore: g.awayScore,
     spread: g.spread,
+    homeLogo: g.homeLogo ?? null,
+    awayLogo: g.awayLogo ?? null,
   }));
 }
 

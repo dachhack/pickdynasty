@@ -19,9 +19,12 @@ export type GameView = {
   awayScore: number | null;
   spread: number | null;
   isFantasy: boolean;
+  // ESPN CDN team logos (null = text only).
+  homeLogo: string | null;
+  awayLogo: string | null;
   // 🎯 Player prop: homeTeam/awayTeam already carry "Under x.5"/"Over x.5"
-  // button text; this adds the headline and (once final) the actual stat.
-  prop: { label: string; actual: number | null } | null;
+  // button text; this adds the headline, headshot, and final actual stat.
+  prop: { label: string; actual: number | null; image: string | null } | null;
   burnedHome: boolean;
   burnedAway: boolean;
   myChoice: "HOME" | "AWAY" | null;

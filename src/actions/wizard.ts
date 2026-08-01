@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireCommissioner } from "@/lib/league";
 import {
   espnSupported,
+  safeEspnImage,
   fetchWeekScoreboard,
   WEEKLY_SPORTS,
   type EspnGame,
@@ -40,6 +41,8 @@ async function createSlateWithGames(
           homeScore: g.homeScore,
           awayScore: g.awayScore,
           spread: g.spread,
+          homeLogo: g.homeLogo,
+          awayLogo: g.awayLogo,
         })),
       },
     },
@@ -68,6 +71,9 @@ export type BuilderGame = {
   homeScore: number | null;
   awayScore: number | null;
   spread: number | null;
+  // ESPN CDN team logos — validated server-side (safeEspnImage).
+  homeLogo?: string | null;
+  awayLogo?: string | null;
 };
 
 /**
@@ -107,6 +113,8 @@ export async function createBuilderSlate(
       homeScore: Number.isFinite(g.homeScore) ? Math.round(g.homeScore!) : null,
       awayScore: Number.isFinite(g.awayScore) ? Math.round(g.awayScore!) : null,
       spread: Number.isFinite(g.spread) ? g.spread : null,
+      homeLogo: safeEspnImage(g.homeLogo),
+      awayLogo: safeEspnImage(g.awayLogo),
     });
   }
   if (rows.length === 0) return { ok: false, error: "No valid games in the selection." };

@@ -197,6 +197,13 @@ model Game {
   propStat   String?
   line       Float?
   propActual Float?
+  // ESPN CDN art, captured at import/creation (null = text fallback):
+  // team logos on match rows, the player's headshot on prop rows (resolved
+  // via the Sleeper espn_id bridge for NFL, backfilled from the boxscore
+  // once the game starts for other sports).
+  homeLogo   String?
+  awayLogo   String?
+  propImage  String?
   // null = not decided; HOME | AWAY | TIE.
   // In spread leagues this is the AGAINST-THE-SPREAD result, not the SU winner.
   winner    String?

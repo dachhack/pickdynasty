@@ -91,6 +91,9 @@ export async function syncLeagueResults(leagueId: string, sport: string): Promis
           ...(winner ? { winner } : {}),
           ...(live?.homeScore != null ? { homeScore: live.homeScore } : {}),
           ...(live?.awayScore != null ? { awayScore: live.awayScore } : {}),
+          // Backfill team logos onto games imported before logo capture.
+          ...(live?.homeLogo && !game.homeLogo ? { homeLogo: live.homeLogo } : {}),
+          ...(live?.awayLogo && !game.awayLogo ? { awayLogo: live.awayLogo } : {}),
         },
       });
       updated++;

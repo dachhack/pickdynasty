@@ -89,12 +89,12 @@ export function statFromSummary(
   sport: string,
   playerName: string,
   statKey: string
-): { value: number | null; completed: boolean } {
+): { value: number | null; completed: boolean; headshot: string | null } {
   const completed =
     summary?.header?.competitions?.[0]?.status?.type?.completed === true;
   const def = propStat(statKey);
   const family = propFamily(sport);
-  if (!def || def.family !== family) return { value: null, completed };
+  if (!def || def.family !== family) return { value: null, completed, headshot: null };
 
   const target = normName(playerName);
   for (const team of summary?.boxscore?.players ?? []) {
@@ -112,11 +112,14 @@ export function statFromSummary(
         if (!hit) continue;
         const raw = a.stats?.[idx];
         const value = Number.parseFloat(String(raw ?? ""));
-        return { value: Number.isFinite(value) ? value : null, completed };
+        const h = a.athlete?.headshot;
+        const headshot =
+          typeof h === "string" ? h : typeof h?.href === "string" ? h.href : null;
+        return { value: Number.isFinite(value) ? value : null, completed, headshot };
       }
     }
   }
-  return { value: null, completed };
+  return { value: null, completed, headshot: null };
 }
 
 /**
@@ -149,17 +152,26 @@ export async function gradeLeagueProps(leagueId: string, leagueSport: string): P
       continue; // transient ESPN failure — next tick retries
     }
     if (!summary) continue;
-    const { value, completed } = statFromSummary(
+    const { value, completed, headshot } = statFromSummary(
       summary,
       sport,
       prop.propPlayer!,
       prop.propStat!
     );
-    if (!completed || value == null) continue;
+    // Headshot backfill (non-NFL props get faces once the game starts) —
+    // worthwhile even when the game isn't final yet.
+    const imageFill =
+      !prop.propImage && headshot ? { propImage: headshot } : {};
+    if (!completed || value == null) {
+      if (imageFill.propImage) {
+        await db.game.update({ where: { id: prop.id }, data: imageFill });
+      }
+      continue;
+    }
     const winner = value > prop.line! ? OVER : value < prop.line! ? UNDER : "TIE";
     await db.game.update({
       where: { id: prop.id },
-      data: { winner, propActual: value },
+      data: { winner, propActual: value, ...imageFill },
     });
     updated++;
   }
@@ -169,8 +181,11 @@ export async function gradeLeagueProps(leagueId: string, leagueSport: string): P
 // ---------------- Suggested lines (Sleeper weekly projections, NFL) ----------------
 
 const SLEEPER = "https://api.sleeper.app/v1";
-// The players blob is ~5 MB — cache the slimmed name→id map for a day.
-let sleeperNameIndex: { at: number; map: Map<string, string> } | null = null;
+// The players blob is ~5 MB — cache the slimmed name index for a day.
+// espn_id rides along: it's the bridge to ESPN's headshot CDN (the same
+// trick Drip's player index uses).
+type SleeperEntry = { id: string; espnId: string | null };
+let sleeperNameIndex: { at: number; map: Map<string, SleeperEntry> } | null = null;
 
 async function sleeperJson(url: string): Promise<any> {
   const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
@@ -178,18 +193,37 @@ async function sleeperJson(url: string): Promise<any> {
   return res.json();
 }
 
-async function sleeperIndex(): Promise<Map<string, string>> {
+async function sleeperIndex(): Promise<Map<string, SleeperEntry>> {
   if (sleeperNameIndex && Date.now() - sleeperNameIndex.at < 24 * 3600 * 1000) {
     return sleeperNameIndex.map;
   }
   const players = await sleeperJson(`${SLEEPER}/players/nfl`);
-  const map = new Map<string, string>();
+  const map = new Map<string, SleeperEntry>();
   for (const [id, p] of Object.entries<any>(players)) {
     if (!p?.full_name || !["QB", "RB", "WR", "TE"].includes(p.position)) continue;
-    map.set(normName(p.full_name), id);
+    map.set(normName(p.full_name), {
+      id,
+      espnId: p.espn_id != null ? String(p.espn_id) : null,
+    });
   }
   sleeperNameIndex = { at: Date.now(), map };
   return map;
+}
+
+/**
+ * ESPN headshot URL for an NFL player, via the Sleeper espn_id bridge.
+ * Null for unknown names or non-NFL — other sports backfill from the
+ * boxscore once the game starts (gradeLeagueProps).
+ */
+export async function nflHeadshot(playerName: string): Promise<string | null> {
+  try {
+    const entry = (await sleeperIndex()).get(normName(playerName));
+    return entry?.espnId
+      ? `https://a.espncdn.com/i/headshots/nfl/players/full/${entry.espnId}.png`
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -215,7 +249,7 @@ export async function suggestLine(input: {
       sleeperJson(`${SLEEPER}/projections/nfl/regular/${season}/${week}`),
       sleeperIndex(),
     ]);
-    const id = index.get(normName(input.playerName));
+    const id = index.get(normName(input.playerName))?.id;
     if (!id) return null;
     // The endpoint has returned both shapes over time: {id: stats} and
     // [{player_id, stats}] — handle either.

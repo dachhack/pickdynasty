@@ -216,7 +216,21 @@ function SortableGameRow({
       <RankBadge rank={rank} />
       <div className="min-w-0 flex-1">
         <p className="text-xs text-slate-500">{game.startTimeLabel}</p>
-        {game.prop && <p className="mt-0.5 truncate text-sm font-bold">🎯 {game.prop.label}</p>}
+        {game.prop && (
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-sm font-bold">
+            {game.prop.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={game.prop.image}
+                alt=""
+                className="h-6 w-6 shrink-0 rounded-full bg-slate-800 object-cover"
+              />
+            ) : (
+              <span>🎯</span>
+            )}
+            <span className="truncate">{game.prop.label}</span>
+          </p>
+        )}
         <div className="mt-1 grid grid-cols-2 gap-2">
           {(["AWAY", "HOME"] as const).map((side) => {
             const team = side === "HOME" ? game.homeTeam : game.awayTeam;
@@ -226,14 +240,24 @@ function SortableGameRow({
                 key={side}
                 type="button"
                 onClick={() => onPick(game.id, side)}
-                className={`truncate rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-all duration-150 active:scale-[0.97] ${
+                className={`flex items-center gap-1.5 truncate rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-all duration-150 active:scale-[0.97] ${
                   chosen
                     ? "border-indigo-500 bg-indigo-950/50 text-white"
                     : "border-slate-700 text-slate-300 hover:border-slate-500"
                 }`}
               >
-                {side === "AWAY" && !game.isFantasy && !game.prop ? "@ " : ""}
-                {team}
+                {(side === "HOME" ? game.homeLogo : game.awayLogo) && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={(side === "HOME" ? game.homeLogo : game.awayLogo)!}
+                    alt=""
+                    className="h-5 w-5 shrink-0"
+                  />
+                )}
+                <span className="truncate">
+                  {side === "AWAY" && !game.isFantasy && !game.prop ? "@ " : ""}
+                  {team}
+                </span>
               </button>
             );
           })}
