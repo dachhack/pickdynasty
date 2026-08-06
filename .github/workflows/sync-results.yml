@@ -9,9 +9,21 @@ on:
     - cron: "*/15 * * * *" # every 15 min (GitHub may delay a few minutes)
   workflow_dispatch:
 
+# A tick is worthless once the next one is due, and both endpoints are
+# idempotent — so let a newer run cancel an older one. This also covers the
+# case where GitHub can't hand out a hosted runner: the job sits queued,
+# gets killed at ~15 min, and the run is reported as FAILED ("all jobs were
+# cancelled") even though nothing of ours ran. Cancelling it ourselves marks
+# it cancelled instead, which doesn't page anyone.
+concurrency:
+  group: sync-results
+  cancel-in-progress: true
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # Three curls with their own --max-time; anything past this is a hang.
+    timeout-minutes: 10
     # The `secrets` context isn't allowed in step `if:` — mirror into env
     # and gate on that instead. (An if on secrets.* invalidates the whole
     # file: every push then logs a phantom 0-job failed run and the cron
