@@ -17,7 +17,12 @@ import {
   sendBrandedRecoveryEmail,
   sendBrandedSignupEmail,
 } from "@/lib/authEmails";
-import { supabaseEnabled, supabaseServer } from "@/lib/supabase";
+import { isSupabaseKeyError, supabaseEnabled, supabaseServer } from "@/lib/supabase";
+
+// Shown when Supabase rejects OUR key — never blame the user's password for
+// an outage that hits every account at once.
+const AUTH_UNAVAILABLE =
+  "Sign-in is temporarily unavailable. Please try again shortly.";
 
 async function requestOrigin(): Promise<string> {
   const h = await headers();
@@ -63,6 +68,10 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
         emailRedirectTo: `${process.env.APP_URL ?? "https://epicpickem.com"}/login`,
       },
     });
+    if (isSupabaseKeyError(error)) {
+      console.error("[auth] Supabase rejected our API key on signup:", error?.message);
+      return { error: AUTH_UNAVAILABLE };
+    }
     if (error) return { error: error.message };
     if (!data.session) {
       // Project requires email confirmation before the first sign-in.
@@ -88,6 +97,10 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   if (supabaseEnabled()) {
     const supabase = await supabaseServer();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (isSupabaseKeyError(error)) {
+      console.error("[auth] Supabase rejected our API key on login:", error?.message);
+      return { error: AUTH_UNAVAILABLE };
+    }
     if (error) return { error: "Invalid email or password." };
     // Pre-existing account claimed by a guest: absorb it now. (New accounts
     // are absorbed when their mirror row is first created.)

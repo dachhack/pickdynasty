@@ -32,6 +32,28 @@ export function supabaseAdminEnabled(): boolean {
   return supabaseEnabled() && Boolean(supabaseAdminKey());
 }
 
+/**
+ * True when an auth call failed on OUR credentials rather than the user's:
+ * an expired/revoked anon key, or a project JWT-secret rotation that
+ * invalidated every legacy `eyJ...` key signed with it.
+ *
+ * Worth separating from a bad password. We share ONE Supabase project with
+ * Drip League FF, so a key rotation over there silently breaks sign-in
+ * here — and Supabase reports it as just another auth error, which used to
+ * render as "Invalid email or password." to every user at once. Callers
+ * should log this and say sign-in is unavailable instead of blaming the
+ * password. (Wrong credentials come back as 400 "Invalid login
+ * credentials", which deliberately does NOT match.)
+ */
+export function isSupabaseKeyError(
+  error: { status?: number; message?: string } | null | undefined
+): boolean {
+  if (!error?.message) return false;
+  return /invalid api key|no api key|api key found|jwt expired|invalid jwt|signature is invalid/i.test(
+    error.message
+  );
+}
+
 export function supabaseAdmin() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, supabaseAdminKey()!, {
     auth: { autoRefreshToken: false, persistSession: false },

@@ -39,6 +39,21 @@ sign-in, and branded email all working.
   strings carry `?schema=epicpickem` / `&schema=epicpickem` — this avoided
   Prisma P3005 against Drip's populated `public` schema). Auth is shared:
   same auth.users = one account across both products.
+- **Key rotation is a CROSS-PRODUCT event.** Sharing the project means
+  sharing its keys: rotating the JWT secret (or letting a legacy `eyJ...`
+  key expire) on Drip's side invalidates the SAME key here, and Epic's
+  sign-in dies with it. Two gotchas when re-keying:
+  1. `NEXT_PUBLIC_SUPABASE_ANON_KEY` is a Docker **build-arg**
+     (deploy-production.yml), not a Fly runtime secret — updating the
+     `PROD_SUPABASE_ANON_KEY` GitHub secret does nothing until you
+     **redeploy**. Everything else is `flyctl secrets set` and takes
+     effect on restart.
+  2. Prefer the new formats when re-keying: `sb_publishable_...` for the
+     anon slot, `sb_secret_...` for the admin slot. Neither expires and
+     neither is tied to the JWT secret, so the next rotation on Drip's
+     side won't take Epic down with it.
+  The DB connection strings are unaffected by any of this — they carry a
+  Postgres password, not a JWT.
 - **Auth drivers** (src/lib/auth.ts): Supabase when NEXT_PUBLIC_SUPABASE_*
   present, self-contained JWT cookie (`ep_session`) otherwise — AND the JWT
   cookie is always checked as fallback (bar-night guests ride it in prod).

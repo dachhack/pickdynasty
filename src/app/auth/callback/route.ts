@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { adoptGuestAccounts, destroySession, jwtCookieUser } from "@/lib/auth";
-import { supabaseEnabled, supabaseServer } from "@/lib/supabase";
+import { isSupabaseKeyError, supabaseEnabled, supabaseServer } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +24,10 @@ export async function GET(request: Request) {
 
   const supabase = await supabaseServer();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (isSupabaseKeyError(error)) {
+    console.error("[auth] Supabase rejected our API key on OAuth callback:", error?.message);
+    return NextResponse.redirect(`${origin}/login?error=unavailable`);
+  }
   if (error || !data.user?.email) {
     return NextResponse.redirect(`${origin}/login?error=oauth`);
   }
